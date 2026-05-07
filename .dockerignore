@@ -1,0 +1,21 @@
+.git/
+
+# Python/runtime artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+
+# Local virtual environments
+venv/
+.venv/
+
+# Local environment
+.env
+
+# Wallace runtime state
+sandbox/
+logs/
+log.md
+.local/

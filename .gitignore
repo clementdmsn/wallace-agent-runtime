@@ -1,0 +1,20 @@
+# Local virtual environments
+venv/
+.venv/
+
+# Python/test artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Wallace runtime state
+sandbox/
+logs/
+.local/
