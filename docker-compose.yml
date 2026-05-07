@@ -1,0 +1,31 @@
+services:
+  wallace:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    network_mode: "host"
+    volumes:
+      - .:/app:ro
+      - ./skill_catalog:/app/skill_catalog:rw
+      - wallace_sandbox:/sandbox
+      - wallace_state:/state
+    environment:
+      WALLACE_MODEL_PROVIDER: "${WALLACE_MODEL_PROVIDER:-local}"
+      WALLACE_MODEL: "${WALLACE_MODEL:-}"
+      WALLACE_EMBEDDING_MODEL: "${WALLACE_EMBEDDING_MODEL:-}"
+      WALLACE_API_KEY: "${WALLACE_API_KEY:-lmstudio}"
+      WALLACE_PROJECT_DIR: "/app"
+      WALLACE_SANDBOX_DIR: "/sandbox"
+      WALLACE_CURL_WHITELIST_PATH: "/state/curl_whitelist.json"
+      WALLACE_BASE_URL: "${WALLACE_BASE_URL:-http://127.0.0.1:1234/v1}"
+      WALLACE_HOST: "127.0.0.1"
+      WALLACE_PORT: "8000"
+      WALLACE_RUN_TRACE_PAYLOADS: "false"
+      WALLACE_RUN_TRACE_DIR: "/state/logs/runs"
+      WALLACE_SKILL_METADATA_DIR: "/app/skill_catalog/metadatas"
+      WALLACE_SKILL_PROCEDURE_DIR: "/app/skill_catalog/procedures"
+      WALLACE_SKILL_INDEX_DIR: "/sandbox/skills/indexes"
+
+volumes:
+  wallace_sandbox:
+  wallace_state:

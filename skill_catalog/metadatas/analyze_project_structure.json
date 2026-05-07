@@ -1,0 +1,67 @@
+{
+  "name": "analyze_project_structure",
+  "summary": "Analyze the directory structure and file types of a software project to understand its organization.",
+  "description": "Identifies key directories, file patterns, and language usage in a project's source tree.",
+  "categories": [
+    "project_analysis"
+  ],
+  "when_to_use": [
+    "analyze project layout",
+    "understand codebase structure",
+    "review project architecture"
+  ],
+  "when_not_to_use": [
+    "create new files",
+    "edit existing code",
+    "refactor code",
+    "debug runtime errors",
+    "test functionality",
+    "write unit tests"
+  ],
+  "trigger_actions": [
+    "analyze project structure",
+    "examine directory layout",
+    "review codebase organization"
+  ],
+  "inputs": {
+    "path": {
+      "type": "string",
+      "description": "Relative sandbox path to the project directory, e.g., src, app, or ."
+    }
+  },
+  "outputs": {
+    "summary": {
+      "type": "string",
+      "description": "A concise summary of the project structure and key findings."
+    },
+    "file_types": {
+      "type": "object",
+      "description": "A breakdown of file types by extension (e.g., {\".py\": 5, \".js\": 3})."
+    },
+    "directories": {
+      "type": "array",
+      "description": "List of directories found in the project path."
+    }
+  },
+  "tools_required": [
+    "run_shell"
+  ],
+  "exclusions": [
+    "create",
+    "edit",
+    "refactor",
+    "fix",
+    "debug",
+    "review",
+    "test"
+  ],
+  "examples": [
+    "analyze the structure of ./src",
+    "show me the layout of ./app"
+  ],
+  "preconditions": [
+    "path must exist and be accessible"
+  ],
+  "default_score": 0.6,
+  "skill_id": "analyze_project_structure"
+}

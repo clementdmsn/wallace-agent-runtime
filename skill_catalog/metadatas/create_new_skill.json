@@ -1,0 +1,61 @@
+{
+  "name": "create_new_skill",
+  "skill_id": "create_new_skill",
+  "summary": "Create a new prompt-side skill from a user request.",
+  "description": "Use when the user asks the assistant to create, add, register, define, or author a reusable skill procedure for future tasks.",
+  "categories": [
+    "skills"
+  ],
+  "when_to_use": [
+    "User asks to create a new skill.",
+    "User asks to add a reusable procedure.",
+    "User asks to register a skill for future use.",
+    "User asks to define a skill that should be available later."
+  ],
+  "when_not_to_use": [
+    "User asks what skills are.",
+    "User asks whether a skill would be useful.",
+    "User asks how skills work.",
+    "User asks to execute an existing task directly.",
+    "User asks a question rather than giving an instruction to create a skill."
+  ],
+  "trigger_actions": [
+    "create a skill",
+    "create a new skill",
+    "add a skill",
+    "add a new skill",
+    "register a skill",
+    "define a reusable procedure",
+    "author a skill"
+  ],
+  "inputs": {},
+  "outputs": {
+    "metadata_path": {
+      "type": "string",
+      "description": "Path to the created skill metadata JSON file."
+    },
+    "procedure_path": {
+      "type": "string",
+      "description": "Path to the created skill procedure markdown file."
+    }
+  },
+  "tools_required": [
+    "create_skill",
+    "repair_skill_draft",
+    "replace_in_file",
+    "read_file",
+    "finalize_skill_draft"
+  ],
+  "exclusions": [
+    "Do not use for general questions about skills.",
+    "Do not use for normal coding tasks unless the user explicitly asks to create a reusable skill."
+  ],
+  "examples": [
+    "Create a skill for reviewing Python files.",
+    "Add a new skill that explains SQL migrations.",
+    "Register a reusable procedure for writing release notes.",
+    "Define a skill for triaging failing tests."
+  ],
+  "preconditions": [],
+  "default_score": 0.9
+}

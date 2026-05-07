@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-labelledby="title desc">
+  <title id="title">Wallace demo state 2: ordered tool timeline</title>
+  <desc id="desc">Static mockup showing selected skill and ordered tool calls for the OWASP audit demo.</desc>
+  <rect width="960" height="540" fill="#202124"/>
+  <style>
+    text { font-family: system-ui, sans-serif; fill: #f4f3ef; }
+    .muted { fill: #b9b7ad; font-size: 14px; }
+    .label { fill: #8f8d82; font-size: 11px; font-weight: 800; letter-spacing: .08em; }
+    .panel { fill: #2b2c30; stroke: #4b4d52; stroke-width: 1.5; rx: 8; }
+    .skill { fill: #22382f; stroke: #57c095; rx: 8; }
+    .tool { fill: #312d23; stroke: #d8a24a; rx: 8; }
+    .line { stroke: #6d716c; stroke-width: 3; }
+    .dot { fill: #57c095; }
+  </style>
+  <rect class="panel" x="28" y="28" width="904" height="484"/>
+  <text x="64" y="78" font-size="30" font-weight="800">Runtime Timeline</text>
+  <text class="muted" x="64" y="108">Skill routing happens before the model emits the final answer.</text>
+  <rect class="skill" x="64" y="146" width="832" height="72"/>
+  <text class="label" x="96" y="174">SELECTED SKILL</text>
+  <text x="96" y="199" font-size="22" font-weight="800">owasp_security_review</text>
+  <line class="line" x1="130" y1="270" x2="830" y2="270"/>
+  <circle class="dot" cx="130" cy="270" r="13"/>
+  <circle class="dot" cx="480" cy="270" r="13"/>
+  <circle class="dot" cx="830" cy="270" r="13"/>
+  <rect class="tool" x="64" y="304" width="210" height="96"/>
+  <text class="label" x="92" y="334">TOOL 1</text>
+  <text x="92" y="362" font-size="17" font-weight="800">discover_review_targets</text>
+  <text class="muted" x="92" y="386">root: app.py</text>
+  <rect class="tool" x="374" y="304" width="240" height="96"/>
+  <text class="label" x="402" y="334">TOOL 2</text>
+  <text x="402" y="362" font-size="17" font-weight="800">read_file_with_line_numbers</text>
+  <text class="muted" x="402" y="386">path: app.py</text>
+  <rect class="tool" x="704" y="304" width="192" height="96"/>
+  <text class="label" x="732" y="334">TOOL 3</text>
+  <text x="732" y="362" font-size="17" font-weight="800">search_owasp_reference</text>
+  <text class="muted" x="732" y="386">evidence-based query</text>
+  <text class="muted" x="64" y="462">No live timing is implied; ordering is the contract shown by evals and trace artifacts.</text>
+</svg>

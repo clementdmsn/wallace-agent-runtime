@@ -1,0 +1,950 @@
+{
+  "failed": 0,
+  "passed": 10,
+  "results": [
+    {
+      "choice": {
+        "candidates": [
+          {
+            "distance": 0.0,
+            "forced": true,
+            "score": 25.6,
+            "skill_name": "owasp_security_review"
+          }
+        ],
+        "distance": 0.0,
+        "forced": true,
+        "skill_name": "owasp_security_review",
+        "status": "ok",
+        "validation": {
+          "intent": {
+            "action": "review",
+            "args": {
+              "path": "app.py"
+            },
+            "domain": "code",
+            "filetype": "py",
+            "speech_act": "unknown",
+            "text": "security audit app.py using owasp",
+            "tokens": [
+              "app.py",
+              "audit",
+              "owasp",
+              "python",
+              "security",
+              "using"
+            ]
+          },
+          "reasons": [
+            "tag_overlap=4",
+            "action_match",
+            "domain_match",
+            "filetype_match",
+            "required_args_present",
+            "forced_owasp_security_audit_intent"
+          ],
+          "score": 25.6
+        }
+      },
+      "errors": [],
+      "final_policy_error": {
+        "active_skill_name": "owasp_security_review",
+        "blocked_content_chars": 48,
+        "error": "OWASP security review final answer blocked: missing search_owasp_reference call",
+        "message": "The active owasp_security_review skill requires OWASP retrieval before any final audit answer. Call search_owasp_reference with the concrete concern found in the reviewed evidence, then answer using only returned OWASP source/version/reference metadata for citations.",
+        "required_tool": "search_owasp_reference",
+        "status": "error"
+      },
+      "guidance": {
+        "allowed_tools": [
+          "discover_review_targets",
+          "read_file_with_line_numbers",
+          "search_owasp_reference"
+        ],
+        "forbidden_tool_calls": [],
+        "procedure_overrides": [
+          "After reviewing concrete evidence, call search_owasp_reference before any final answer.",
+          "Every finding must cite a returned OWASP source/version/reference_id/title/url. Do not cite OWASP from memory.",
+          "For short single-file audits, prefer discover_review_targets, read_file_with_line_numbers, then search_owasp_reference. Use symbol tools only when they add useful security evidence."
+        ],
+        "recommended_tool_calls": [
+          {
+            "arguments": {
+              "max_files": 20,
+              "root": "app.py"
+            },
+            "reason": "OWASP security review must first discover the bounded audit target set.",
+            "tool": "discover_review_targets"
+          }
+        ],
+        "resolved_task_type": "owasp_security_review"
+      },
+      "name": "owasp_review_requires_reference_search_before_final",
+      "status": "pass",
+      "tool_results": [
+        {
+          "actual": "allowed",
+          "expected": "allowed",
+          "policy_error": null,
+          "tool": "discover_review_targets"
+        }
+      ]
+    },
+    {
+      "choice": {
+        "candidates": [
+          {
+            "distance": 0.0,
+            "forced": true,
+            "score": 25.6,
+            "skill_name": "owasp_security_review"
+          }
+        ],
+        "distance": 0.0,
+        "forced": true,
+        "skill_name": "owasp_security_review",
+        "status": "ok",
+        "validation": {
+          "intent": {
+            "action": "review",
+            "args": {
+              "path": "app.py"
+            },
+            "domain": "code",
+            "filetype": "py",
+            "speech_act": "unknown",
+            "text": "security audit app.py using owasp",
+            "tokens": [
+              "app.py",
+              "audit",
+              "owasp",
+              "python",
+              "security",
+              "using"
+            ]
+          },
+          "reasons": [
+            "tag_overlap=4",
+            "action_match",
+            "domain_match",
+            "filetype_match",
+            "required_args_present",
+            "forced_owasp_security_audit_intent"
+          ],
+          "score": 25.6
+        }
+      },
+      "errors": [],
+      "final_policy_error": null,
+      "guidance": {
+        "allowed_tools": [
+          "discover_review_targets",
+          "read_file_with_line_numbers",
+          "search_owasp_reference"
+        ],
+        "forbidden_tool_calls": [],
+        "procedure_overrides": [
+          "After reviewing concrete evidence, call search_owasp_reference before any final answer.",
+          "Every finding must cite a returned OWASP source/version/reference_id/title/url. Do not cite OWASP from memory.",
+          "For short single-file audits, prefer discover_review_targets, read_file_with_line_numbers, then search_owasp_reference. Use symbol tools only when they add useful security evidence."
+        ],
+        "recommended_tool_calls": [
+          {
+            "arguments": {
+              "max_files": 20,
+              "root": "app.py"
+            },
+            "reason": "OWASP security review must first discover the bounded audit target set.",
+            "tool": "discover_review_targets"
+          }
+        ],
+        "resolved_task_type": "owasp_security_review"
+      },
+      "name": "owasp_review_allows_final_after_reference_search",
+      "status": "pass",
+      "tool_results": [
+        {
+          "actual": "allowed",
+          "expected": "allowed",
+          "policy_error": null,
+          "tool": "discover_review_targets"
+        },
+        {
+          "actual": "allowed",
+          "expected": "allowed",
+          "policy_error": null,
+          "tool": "search_owasp_reference"
+        }
+      ]
+    },
+    {
+      "choice": {
+        "candidates": [
+          {
+            "distance": 0.0,
+            "forced": true,
+            "score": 25.6,
+            "skill_name": "owasp_security_review"
+          }
+        ],
+        "distance": 0.0,
+        "forced": true,
+        "skill_name": "owasp_security_review",
+        "status": "ok",
+        "validation": {
+          "intent": {
+            "action": "review",
+            "args": {
+              "path": "app.py"
+            },
+            "domain": "code",
+            "filetype": "py",
+            "speech_act": "unknown",
+            "text": "security audit app.py using owasp",
+            "tokens": [
+              "app.py",
+              "audit",
+              "owasp",
+              "python",
+              "security",
+              "using"
+            ]
+          },
+          "reasons": [
+            "tag_overlap=4",
+            "action_match",
+            "domain_match",
+            "filetype_match",
+            "required_args_present",
+            "forced_owasp_security_audit_intent"
+          ],
+          "score": 25.6
+        }
+      },
+      "errors": [],
+      "final_policy_error": null,
+      "guidance": {
+        "allowed_tools": [
+          "discover_review_targets",
+          "read_file_with_line_numbers",
+          "search_owasp_reference"
+        ],
+        "forbidden_tool_calls": [],
+        "procedure_overrides": [
+          "After reviewing concrete evidence, call search_owasp_reference before any final answer.",
+          "Every finding must cite a returned OWASP source/version/reference_id/title/url. Do not cite OWASP from memory.",
+          "For short single-file audits, prefer discover_review_targets, read_file_with_line_numbers, then search_owasp_reference. Use symbol tools only when they add useful security evidence."
+        ],
+        "recommended_tool_calls": [
+          {
+            "arguments": {
+              "max_files": 20,
+              "root": "app.py"
+            },
+            "reason": "OWASP security review must first discover the bounded audit target set.",
+            "tool": "discover_review_targets"
+          }
+        ],
+        "resolved_task_type": "owasp_security_review"
+      },
+      "name": "owasp_review_blocks_wrong_tool_before_discovery",
+      "status": "pass",
+      "tool_results": [
+        {
+          "actual": "blocked",
+          "expected": "blocked",
+          "policy_error": {
+            "allowed_tools": [
+              "discover_review_targets",
+              "read_file_with_line_numbers",
+              "search_owasp_reference"
+            ],
+            "error": "tool call blocked by active skill policy: read_file",
+            "message": "Allowed tools for owasp_security_review: ['discover_review_targets', 'read_file_with_line_numbers', 'search_owasp_reference']",
+            "provided_tool": "read_file",
+            "status": "error"
+          },
+          "tool": "read_file"
+        },
+        {
+          "actual": "allowed",
+          "expected": "allowed",
+          "policy_error": null,
+          "tool": "discover_review_targets"
+        }
+      ]
+    },
+    {
+      "choice": {
+        "candidates": [
+          {
+            "distance": 0.0,
+            "forced": true,
+            "score": 25.6,
+            "skill_name": "owasp_security_review"
+          }
+        ],
+        "distance": 0.0,
+        "forced": true,
+        "skill_name": "owasp_security_review",
+        "status": "ok",
+        "validation": {
+          "intent": {
+            "action": "review",
+            "args": {
+              "path": "app.py"
+            },
+            "domain": "code",
+            "filetype": "py",
+            "speech_act": "unknown",
+            "text": "security audit app.py using owasp",
+            "tokens": [
+              "app.py",
+              "audit",
+              "owasp",
+              "python",
+              "security",
+              "using"
+            ]
+          },
+          "reasons": [
+            "tag_overlap=4",
+            "action_match",
+            "domain_match",
+            "filetype_match",
+            "required_args_present",
+            "forced_owasp_security_audit_intent"
+          ],
+          "score": 25.6
+        }
+      },
+      "errors": [],
+      "final_policy_error": null,
+      "guidance": {
+        "allowed_tools": [
+          "discover_review_targets",
+          "read_file_with_line_numbers",
+          "search_owasp_reference"
+        ],
+        "forbidden_tool_calls": [],
+        "procedure_overrides": [
+          "After reviewing concrete evidence, call search_owasp_reference before any final answer.",
+          "Every finding must cite a returned OWASP source/version/reference_id/title/url. Do not cite OWASP from memory.",
+          "For short single-file audits, prefer discover_review_targets, read_file_with_line_numbers, then search_owasp_reference. Use symbol tools only when they add useful security evidence."
+        ],
+        "recommended_tool_calls": [
+          {
+            "arguments": {
+              "max_files": 20,
+              "root": "app.py"
+            },
+            "reason": "OWASP security review must first discover the bounded audit target set.",
+            "tool": "discover_review_targets"
+          }
+        ],
+        "resolved_task_type": "owasp_security_review"
+      },
+      "name": "owasp_review_blocks_path_escape_target",
+      "status": "pass",
+      "tool_results": [
+        {
+          "actual": "blocked",
+          "expected": "blocked",
+          "policy_error": {
+            "error": "argument mismatch for recommended tool call: root",
+            "expected_arguments": {
+              "max_files": 20,
+              "root": "app.py"
+            },
+            "expected_tool": "discover_review_targets",
+            "provided_arguments": {
+              "max_files": 20,
+              "root": "../secrets"
+            },
+            "provided_tool": "discover_review_targets",
+            "recommended_tool_calls": [
+              {
+                "arguments": {
+                  "max_files": 20,
+                  "root": "app.py"
+                },
+                "reason": "OWASP security review must first discover the bounded audit target set.",
+                "tool": "discover_review_targets"
+              }
+            ],
+            "status": "error"
+          },
+          "tool": "discover_review_targets"
+        },
+        {
+          "actual": "allowed",
+          "expected": "allowed",
+          "policy_error": null,
+          "tool": "discover_review_targets"
+        }
+      ]
+    },
+    {
+      "choice": {
+        "candidates": [
+          {
+            "distance": 0.0,
+            "forced": true,
+            "score": 25.6,
+            "skill_name": "owasp_security_review"
+          }
+        ],
+        "distance": 0.0,
+        "forced": true,
+        "skill_name": "owasp_security_review",
+        "status": "ok",
+        "validation": {
+          "intent": {
+            "action": "review",
+            "args": {
+              "path": "app.py"
+            },
+            "domain": "code",
+            "filetype": "py",
+            "speech_act": "unknown",
+            "text": "security audit app.py using owasp",
+            "tokens": [
+              "app.py",
+              "audit",
+              "owasp",
+              "python",
+              "security",
+              "using"
+            ]
+          },
+          "reasons": [
+            "tag_overlap=4",
+            "action_match",
+            "domain_match",
+            "filetype_match",
+            "required_args_present",
+            "forced_owasp_security_audit_intent"
+          ],
+          "score": 25.6
+        }
+      },
+      "errors": [],
+      "final_policy_error": {
+        "active_skill_name": "owasp_security_review",
+        "blocked_content_chars": 82,
+        "error": "OWASP security review final answer blocked: missing search_owasp_reference call",
+        "message": "The active owasp_security_review skill requires OWASP retrieval before any final audit answer. Call search_owasp_reference with the concrete concern found in the reviewed evidence, then answer using only returned OWASP source/version/reference metadata for citations.",
+        "required_tool": "search_owasp_reference",
+        "status": "error"
+      },
+      "guidance": {
+        "allowed_tools": [
+          "discover_review_targets",
+          "read_file_with_line_numbers",
+          "search_owasp_reference"
+        ],
+        "forbidden_tool_calls": [],
+        "procedure_overrides": [
+          "After reviewing concrete evidence, call search_owasp_reference before any final answer.",
+          "Every finding must cite a returned OWASP source/version/reference_id/title/url. Do not cite OWASP from memory.",
+          "For short single-file audits, prefer discover_review_targets, read_file_with_line_numbers, then search_owasp_reference. Use symbol tools only when they add useful security evidence."
+        ],
+        "recommended_tool_calls": [
+          {
+            "arguments": {
+              "max_files": 20,
+              "root": "app.py"
+            },
+            "reason": "OWASP security review must first discover the bounded audit target set.",
+            "tool": "discover_review_targets"
+          }
+        ],
+        "resolved_task_type": "owasp_security_review"
+      },
+      "name": "owasp_review_blocks_hallucinated_reference_answer",
+      "status": "pass",
+      "tool_results": [
+        {
+          "actual": "allowed",
+          "expected": "allowed",
+          "policy_error": null,
+          "tool": "discover_review_targets"
+        }
+      ]
+    },
+    {
+      "choice": {
+        "candidates": [
+          {
+            "distance": 0.1,
+            "score": 21.6,
+            "skill_name": "code_explainer"
+          }
+        ],
+        "distance": 0.1,
+        "skill_name": "code_explainer",
+        "status": "ok",
+        "validation": {
+          "intent": {
+            "action": "summarize",
+            "args": {
+              "path": "auth.py"
+            },
+            "domain": "code",
+            "filetype": "py",
+            "speech_act": "command",
+            "text": "explain auth.py",
+            "tokens": [
+              "auth.py",
+              "explain",
+              "python"
+            ]
+          },
+          "reasons": [
+            "tag_overlap=2",
+            "action_match",
+            "domain_match",
+            "filetype_match",
+            "required_args_present"
+          ],
+          "score": 21.6
+        }
+      },
+      "errors": [],
+      "final_policy_error": null,
+      "guidance": {
+        "allowed_tools": [
+          "summarize_code_file"
+        ],
+        "forbidden_tool_calls": [
+          {
+            "reason": "No explicit symbol was provided. Do not guess symbols such as main.",
+            "tool": "explain_function_for_model"
+          },
+          {
+            "reason": "summarize_code_file is the dedicated compact code-overview tool for whole-file explanation.",
+            "tool": "read_file"
+          }
+        ],
+        "procedure_overrides": [
+          "Treat this as a whole-file code overview request, not a specific-function request.",
+          "Call summarize_code_file with the returned path exactly once before answering.",
+          "Do not guess or invent a symbol name.",
+          "Do not call read_file unless summarize_code_file fails and the user explicitly asks to read raw contents.",
+          "Base the answer on the summarize_code_file result."
+        ],
+        "recommended_tool_calls": [
+          {
+            "arguments": {
+              "path": "auth.py"
+            },
+            "reason": "User requested an explanation/overview of a code file and did not provide a specific symbol.",
+            "tool": "summarize_code_file"
+          }
+        ],
+        "resolved_task_type": "whole_file_code_overview"
+      },
+      "name": "whole_file_code_overview_uses_summary_tool",
+      "status": "pass",
+      "tool_results": [
+        {
+          "actual": "blocked",
+          "expected": "blocked",
+          "policy_error": {
+            "allowed_tools": [
+              "summarize_code_file"
+            ],
+            "error": "tool call blocked by active skill policy: read_file",
+            "message": "Allowed tools for code_explainer: ['summarize_code_file']",
+            "provided_tool": "read_file",
+            "status": "error"
+          },
+          "tool": "read_file"
+        },
+        {
+          "actual": "allowed",
+          "expected": "allowed",
+          "policy_error": null,
+          "tool": "summarize_code_file"
+        }
+      ]
+    },
+    {
+      "choice": {
+        "candidates": [
+          {
+            "distance": 0.1,
+            "score": 21.6,
+            "skill_name": "code_explainer"
+          }
+        ],
+        "distance": 0.1,
+        "skill_name": "code_explainer",
+        "status": "ok",
+        "validation": {
+          "intent": {
+            "action": "summarize",
+            "args": {
+              "path": "auth.py",
+              "symbol": "login"
+            },
+            "domain": "code",
+            "filetype": "py",
+            "speech_act": "command",
+            "text": "explain function login in auth.py",
+            "tokens": [
+              "auth.py",
+              "explain",
+              "function",
+              "in",
+              "login",
+              "python"
+            ]
+          },
+          "reasons": [
+            "tag_overlap=2",
+            "action_match",
+            "domain_match",
+            "filetype_match",
+            "required_args_present"
+          ],
+          "score": 21.6
+        }
+      },
+      "errors": [],
+      "final_policy_error": null,
+      "guidance": {
+        "allowed_tools": [
+          "list_code_symbols",
+          "explain_function_for_model"
+        ],
+        "forbidden_tool_calls": [
+          {
+            "reason": "Use deterministic symbol tools instead of raw file reading for function explanation.",
+            "tool": "read_file"
+          }
+        ],
+        "procedure_overrides": [
+          "Treat this as a specific-function explanation request.",
+          "First call list_code_symbols with the returned path to discover valid symbols.",
+          "Then call explain_function_for_model only if the requested symbol appears in the discovered symbols.",
+          "Do not substitute another symbol. If the requested symbol is missing, report that failure explicitly.",
+          "Base the answer on the tool result."
+        ],
+        "recommended_tool_calls": [
+          {
+            "arguments": {
+              "path": "auth.py"
+            },
+            "reason": "Verify available symbols before explaining a specific function.",
+            "tool": "list_code_symbols"
+          },
+          {
+            "arguments": {
+              "path": "auth.py",
+              "symbol": "login"
+            },
+            "reason": "Explain only the explicitly requested symbol after it has been discovered from the file.",
+            "tool": "explain_function_for_model"
+          }
+        ],
+        "resolved_task_type": "specific_function_explanation"
+      },
+      "name": "function_explanation_requires_symbol_discovery",
+      "status": "pass",
+      "tool_results": [
+        {
+          "actual": "blocked",
+          "expected": "blocked",
+          "policy_error": {
+            "error": "expected recommended tool call: list_code_symbols, got: explain_function_for_model",
+            "expected_arguments": {
+              "path": "auth.py"
+            },
+            "expected_tool": "list_code_symbols",
+            "provided_arguments": {
+              "path": "auth.py",
+              "symbol": "login"
+            },
+            "provided_tool": "explain_function_for_model",
+            "recommended_tool_calls": [
+              {
+                "arguments": {
+                  "path": "auth.py"
+                },
+                "reason": "Verify available symbols before explaining a specific function.",
+                "tool": "list_code_symbols"
+              },
+              {
+                "arguments": {
+                  "path": "auth.py",
+                  "symbol": "login"
+                },
+                "reason": "Explain only the explicitly requested symbol after it has been discovered from the file.",
+                "tool": "explain_function_for_model"
+              }
+            ],
+            "status": "error"
+          },
+          "tool": "explain_function_for_model"
+        },
+        {
+          "actual": "allowed",
+          "expected": "allowed",
+          "policy_error": null,
+          "tool": "list_code_symbols"
+        },
+        {
+          "actual": "allowed",
+          "expected": "allowed",
+          "policy_error": null,
+          "tool": "explain_function_for_model"
+        }
+      ]
+    },
+    {
+      "choice": {
+        "candidates": [
+          {
+            "distance": 0.1,
+            "score": 21.6,
+            "skill_name": "code_explainer"
+          }
+        ],
+        "distance": 0.1,
+        "skill_name": "code_explainer",
+        "status": "ok",
+        "validation": {
+          "intent": {
+            "action": "summarize",
+            "args": {
+              "path": "auth.py",
+              "symbol": "login"
+            },
+            "domain": "code",
+            "filetype": "py",
+            "speech_act": "command",
+            "text": "explain function login in auth.py",
+            "tokens": [
+              "auth.py",
+              "explain",
+              "function",
+              "in",
+              "login",
+              "python"
+            ]
+          },
+          "reasons": [
+            "tag_overlap=2",
+            "action_match",
+            "domain_match",
+            "filetype_match",
+            "required_args_present"
+          ],
+          "score": 21.6
+        }
+      },
+      "errors": [],
+      "final_policy_error": null,
+      "guidance": {
+        "allowed_tools": [
+          "list_code_symbols",
+          "explain_function_for_model"
+        ],
+        "forbidden_tool_calls": [
+          {
+            "reason": "Use deterministic symbol tools instead of raw file reading for function explanation.",
+            "tool": "read_file"
+          }
+        ],
+        "procedure_overrides": [
+          "Treat this as a specific-function explanation request.",
+          "First call list_code_symbols with the returned path to discover valid symbols.",
+          "Then call explain_function_for_model only if the requested symbol appears in the discovered symbols.",
+          "Do not substitute another symbol. If the requested symbol is missing, report that failure explicitly.",
+          "Base the answer on the tool result."
+        ],
+        "recommended_tool_calls": [
+          {
+            "arguments": {
+              "path": "auth.py"
+            },
+            "reason": "Verify available symbols before explaining a specific function.",
+            "tool": "list_code_symbols"
+          },
+          {
+            "arguments": {
+              "path": "auth.py",
+              "symbol": "login"
+            },
+            "reason": "Explain only the explicitly requested symbol after it has been discovered from the file.",
+            "tool": "explain_function_for_model"
+          }
+        ],
+        "resolved_task_type": "specific_function_explanation"
+      },
+      "name": "function_explanation_blocks_unrequested_symbol",
+      "status": "pass",
+      "tool_results": [
+        {
+          "actual": "allowed",
+          "expected": "allowed",
+          "policy_error": null,
+          "tool": "list_code_symbols"
+        },
+        {
+          "actual": "blocked",
+          "expected": "blocked",
+          "policy_error": {
+            "error": "argument mismatch for recommended tool call: symbol",
+            "expected_arguments": {
+              "path": "auth.py",
+              "symbol": "login"
+            },
+            "expected_tool": "explain_function_for_model",
+            "provided_arguments": {
+              "path": "auth.py",
+              "symbol": "logout"
+            },
+            "provided_tool": "explain_function_for_model",
+            "recommended_tool_calls": [
+              {
+                "arguments": {
+                  "path": "auth.py"
+                },
+                "reason": "Verify available symbols before explaining a specific function.",
+                "tool": "list_code_symbols"
+              },
+              {
+                "arguments": {
+                  "path": "auth.py",
+                  "symbol": "login"
+                },
+                "reason": "Explain only the explicitly requested symbol after it has been discovered from the file.",
+                "tool": "explain_function_for_model"
+              }
+            ],
+            "status": "error"
+          },
+          "tool": "explain_function_for_model"
+        },
+        {
+          "actual": "allowed",
+          "expected": "allowed",
+          "policy_error": null,
+          "tool": "explain_function_for_model"
+        }
+      ]
+    },
+    {
+      "choice": {
+        "candidates": [
+          {
+            "distance": 0.1,
+            "score": 22.2,
+            "skill_name": "create_new_skill"
+          }
+        ],
+        "distance": 0.1,
+        "skill_name": "create_new_skill",
+        "status": "ok",
+        "validation": {
+          "intent": {
+            "action": "create",
+            "args": {},
+            "domain": "skills",
+            "filetype": null,
+            "speech_act": "command",
+            "text": "create a reusable skill for debugging functions",
+            "tokens": [
+              "a",
+              "create",
+              "debugging",
+              "for",
+              "functions",
+              "reusable",
+              "skill"
+            ]
+          },
+          "reasons": [
+            "tag_overlap=3",
+            "action_match",
+            "domain_match",
+            "required_args_present"
+          ],
+          "score": 22.2
+        }
+      },
+      "errors": [],
+      "final_policy_error": null,
+      "guidance": {
+        "allowed_tools": [
+          "create_skill",
+          "repair_skill_draft",
+          "finalize_skill_draft"
+        ],
+        "forbidden_tool_calls": [],
+        "procedure_overrides": [],
+        "recommended_tool_calls": [],
+        "resolved_task_type": "generic_skill_procedure"
+      },
+      "name": "skill_authoring_blocks_direct_active_skill_writes",
+      "status": "pass",
+      "tool_results": [
+        {
+          "actual": "blocked",
+          "expected": "blocked",
+          "policy_error": {
+            "error": "direct skill file writes are blocked by active skill policy",
+            "message": "Use create_skill/repair_skill_draft/finalize_skill_draft to create skill files. Edit only skills/drafts when repairing validation errors.",
+            "path": "skill_catalog/metadatas/debug_function.json",
+            "provided_tool": "write_file",
+            "status": "error"
+          },
+          "tool": "write_file"
+        },
+        {
+          "actual": "allowed",
+          "expected": "allowed",
+          "policy_error": null,
+          "tool": "create_skill"
+        }
+      ]
+    },
+    {
+      "choice": {
+        "best_candidate": {
+          "distance": 0.1,
+          "score": -2.8,
+          "skill_name": "code_explainer"
+        },
+        "candidates": [
+          {
+            "distance": 0.1,
+            "score": -2.8,
+            "skill_name": "code_explainer"
+          }
+        ],
+        "message": "No relevant skill is available. Improvise a short procedure with normal tool discipline.",
+        "selection_reason": "best skill below threshold",
+        "skill_name": null,
+        "status": "ok"
+      },
+      "errors": [],
+      "final_policy_error": null,
+      "guidance": null,
+      "name": "general_question_does_not_activate_skill_policy",
+      "status": "pass",
+      "tool_results": [
+        {
+          "actual": "allowed",
+          "expected": "allowed",
+          "policy_error": null,
+          "tool": "read_file"
+        }
+      ]
+    }
+  ],
+  "status": "pass",
+  "total": 10
+}

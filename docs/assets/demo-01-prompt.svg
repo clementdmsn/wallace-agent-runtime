@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-labelledby="title desc">
+  <title id="title">Wallace demo state 1: prompt submitted</title>
+  <desc id="desc">Static mockup showing the OWASP audit prompt submitted to Wallace.</desc>
+  <rect width="960" height="540" fill="#202124"/>
+  <style>
+    text { font-family: system-ui, sans-serif; fill: #f4f3ef; }
+    .muted { fill: #b9b7ad; font-size: 14px; }
+    .label { fill: #8f8d82; font-size: 11px; font-weight: 800; letter-spacing: .08em; }
+    .panel { fill: #2b2c30; stroke: #4b4d52; stroke-width: 1.5; rx: 8; }
+    .input { fill: #f4f3ef; stroke: #d2d0c7; rx: 8; }
+    .inputText { fill: #202124; font-size: 20px; font-weight: 700; }
+    .button { fill: #2f7d62; rx: 8; }
+    .accent { fill: #22382f; stroke: #57c095; rx: 8; }
+  </style>
+  <rect class="panel" x="28" y="28" width="904" height="484"/>
+  <text x="64" y="78" font-size="30" font-weight="800">Wallace</text>
+  <text class="muted" x="64" y="108">Trace-driven OWASP audit demo</text>
+  <rect class="accent" x="64" y="150" width="832" height="118"/>
+  <text class="label" x="96" y="190">USER PROMPT</text>
+  <text x="96" y="226" font-size="28" font-weight="800">security audit app.py using OWASP</text>
+  <rect class="input" x="64" y="346" width="676" height="70"/>
+  <text class="inputText" x="92" y="390">security audit app.py using OWASP</text>
+  <rect class="button" x="760" y="346" width="136" height="70"/>
+  <text x="803" y="389" font-size="18" font-weight="800">Send</text>
+  <text class="muted" x="64" y="462">Static mockup. The demo is backed by trace JSON and offline eval contracts.</text>
+</svg>

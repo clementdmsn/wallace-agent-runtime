@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta
+                name="viewport"
+                content="width=device-width,initial-scale=1"
+                />
+        <title>Wallace</title>
+        <link rel="stylesheet" href="/styles.css" />
+    </head>
+    <body>
+        <div class="app-shell">
+            <aside id="sessions-sidebar" class="sessions-sidebar expanded">
+                <!-- <div class="sidebar-logo"> -->
+                <!--     <img src="https://s.yimg.com/ny/api/res/1.2/pGEpqbgjGCRTpVKwmVb_Nw--/YXBwaWQ9aGlnaGxhbmRlcjt3PTk2MDtoPTY1MDtjZj13ZWJw/https://media.zenfs.com/en-us/homerun/tvline.com/6a7cd9de11613bf1e8eca848251f5cd1"/> -->
+                <!-- </div> -->
+
+                <div class="sessions-top">
+                    <button
+                            id="sidebar-toggle-button"
+                            class="icon-button"
+                            type="button"
+                            aria-label="Toggle sidebar"
+                            title="Toggle sidebar"
+                            >
+                            ☰
+                    </button>
+
+                        <button
+                                id="new-chat-button"
+                                class="sidebar-primary-button"
+                                type="button"
+                                >
+                                <span class="sidebar-primary-icon">＋</span>
+                                <span class="sidebar-primary-label">New Chat</span>
+                        </button>
+                </div>
+
+                <div class="sessions-body">
+                    <div class="sessions-section-title">Chats</div>
+
+                    <div id="collapsed-history-anchor" class="collapsed-history-anchor">
+                        <button
+                                id="collapsed-history-button"
+                                class="collapsed-history-button"
+                                type="button"
+                                aria-label="Recent conversations"
+                                title="Recent conversations"
+                                >
+                                💬
+                        </button>
+
+                            <div id="collapsed-history-tooltip" class="collapsed-history-tooltip">
+                                <div class="collapsed-history-tooltip-title">Recent conversations</div>
+                                <div id="collapsed-history-list" class="collapsed-history-list"></div>
+                            </div>
+                    </div>
+
+                    <div id="sessions-list" class="sessions-list"></div>
+                </div>
+            </aside>
+
+            <div class="app-main">
+                <header class="topbar">
+                    <div>
+                        <h1>Wallace</h1>
+                        <p class="subtitle">Web GUI</p>
+                    </div>
+
+                    <div class="topbar-actions">
+                        <div id="app-error" class="app-error" role="status" aria-live="polite" hidden></div>
+                        <div id="status-pill" class="status idle">Idle</div>
+                    </div>
+                </header>
+
+                <main class="main-grid">
+                    <section class="panel chat-panel">
+                        <div id="chat" class="chat"></div>
+
+                        <div id="approval-bar" class="approval-bar" hidden></div>
+
+                        <form id="composer-form" class="composer">
+                            <textarea
+                                    id="composer-input"
+                                    rows="1"
+                                    placeholder="Type a message. Enter sends, Shift+Enter adds a new line"
+                                    ></textarea>
+                            <button id="send-button" type="submit">Send</button>
+                        </form>
+                    </section>
+
+                    <aside class="panel sidebar-panel">
+                        <h2>Runtime</h2>
+                        <details id="metrics-details" class="runtime-section metrics-section">
+                            <summary class="runtime-section-title metrics-summary">Metrics</summary>
+                            <div id="runtime-metrics" class="runtime-metrics"></div>
+                        </details>
+                        <section class="runtime-section overview-section">
+                            <div class="runtime-section-title">Policy</div>
+                            <div id="runtime-overview" class="runtime-overview"></div>
+                        </section>
+                        <section class="runtime-section tool-section">
+                            <div class="runtime-section-title">Timeline</div>
+                            <div id="tool-events" class="tool-events"></div>
+                        </section>
+                    </aside>
+                </main>
+            </div>
+        </div>
+
+        <script src="/metrics.js"></script>
+        <script src="/app.js"></script>
+    </body>
+</html>

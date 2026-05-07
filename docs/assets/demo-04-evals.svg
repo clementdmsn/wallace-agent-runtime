@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-labelledby="title desc">
+  <title id="title">Wallace demo state 4: offline evals</title>
+  <desc id="desc">Static mockup showing offline eval output with all default scenarios passing.</desc>
+  <rect width="960" height="540" fill="#202124"/>
+  <style>
+    text { font-family: system-ui, sans-serif; fill: #f4f3ef; }
+    .muted { fill: #b9b7ad; font-size: 14px; }
+    .label { fill: #8f8d82; font-size: 11px; font-weight: 800; letter-spacing: .08em; }
+    .panel { fill: #2b2c30; stroke: #4b4d52; stroke-width: 1.5; rx: 8; }
+    .terminal { fill: #151619; stroke: #4b4d52; rx: 8; }
+    .pass { fill: #57c095; font-weight: 800; }
+    .line { fill: #cfd1c8; font-size: 15px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  </style>
+  <rect class="panel" x="28" y="28" width="904" height="484"/>
+  <text x="64" y="78" font-size="30" font-weight="800">Deterministic Offline Evals</text>
+  <text class="muted" x="64" y="108">The demo behavior is validated without calling a model server.</text>
+  <rect class="terminal" x="64" y="150" width="832" height="276"/>
+  <text class="line" x="96" y="194">$ make eval-offline</text>
+  <text class="line" x="96" y="235"># Offline Agent Eval Report</text>
+  <text class="line" x="96" y="274">Status: pass</text>
+  <text class="line pass" x="96" y="313">Passed: 10/10</text>
+  <text class="line" x="96" y="352">PASS: owasp_review_requires_reference_search_before_final</text>
+  <text class="line" x="96" y="391">PASS: owasp_review_allows_final_after_reference_search</text>
+  <text class="muted" x="64" y="462">Stored JSON output: docs/examples/offline-eval-report.json</text>
+</svg>

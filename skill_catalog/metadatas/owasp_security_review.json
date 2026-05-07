@@ -1,0 +1,73 @@
+{
+  "name": "owasp_security_review",
+  "skill_id": "owasp_security_review",
+  "summary": "Review code or project files for defensive security issues using OWASP-backed retrieval.",
+  "description": "Performs a bounded static security audit of selected files or project roots, retrieves relevant OWASP ASVS and Top 10 references, and reports citation-backed defensive findings.",
+  "categories": [
+    "code",
+    "security_review",
+    "owasp"
+  ],
+  "when_to_use": [
+    "Use when the user asks for a security audit of code or a project path.",
+    "Use when the user asks to review code against OWASP guidance.",
+    "Use when the user asks to inspect files for application security risks."
+  ],
+  "when_not_to_use": [
+    "Do not use for create, edit, refactor, fix, debug, or test tasks.",
+    "Do not use for general code quality review without a security or OWASP focus.",
+    "Do not use for exploit automation, payload generation, live attack guidance, or offensive testing."
+  ],
+  "trigger_actions": [
+    "security audit ./app",
+    "review app.py for OWASP security issues",
+    "audit ./src against OWASP",
+    "inspect auth.py for application security risks",
+    "review project security"
+  ],
+  "inputs": {
+    "path": {
+      "type": "string",
+      "description": "Relative sandbox file or project directory to audit."
+    }
+  },
+  "outputs": {
+    "findings": {
+      "type": "array",
+      "description": "Severity-ordered citation-backed security findings."
+    },
+    "review_limits": {
+      "type": "array",
+      "description": "Boundaries, skipped files, and confidence limits for the static review."
+    }
+  },
+  "tools_required": [
+    "discover_review_targets",
+    "read_file",
+    "read_file_with_line_numbers",
+    "list_code_symbols",
+    "explain_function_for_model",
+    "search_owasp_reference"
+  ],
+  "exclusions": [
+    "create",
+    "edit",
+    "refactor",
+    "fix",
+    "debug",
+    "test",
+    "quality review",
+    "exploit",
+    "payload"
+  ],
+  "examples": [
+    "security audit ./example_project",
+    "review ./src/app.py for OWASP security issues",
+    "audit ./api against OWASP"
+  ],
+  "preconditions": [
+    "The referenced file or project directory exists in the sandbox.",
+    "The OWASP reference index exists. If it is missing, report that setup/admin index rebuild is required."
+  ],
+  "default_score": 0.7
+}

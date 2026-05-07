@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-labelledby="title desc">
+  <title id="title">Wallace demo state 3: policy block</title>
+  <desc id="desc">Static mockup showing the OWASP policy blocking a premature final answer.</desc>
+  <rect width="960" height="540" fill="#202124"/>
+  <style>
+    text { font-family: system-ui, sans-serif; fill: #f4f3ef; }
+    .muted { fill: #b9b7ad; font-size: 14px; }
+    .label { fill: #8f8d82; font-size: 11px; font-weight: 800; letter-spacing: .08em; }
+    .panel { fill: #2b2c30; stroke: #4b4d52; stroke-width: 1.5; rx: 8; }
+    .blocked { fill: #3a252a; stroke: #e05a68; rx: 8; }
+    .ok { fill: #22382f; stroke: #57c095; rx: 8; }
+    .rule { fill: #302d37; stroke: #9b8ad6; rx: 8; }
+  </style>
+  <rect class="panel" x="28" y="28" width="904" height="484"/>
+  <text x="64" y="78" font-size="30" font-weight="800">External Policy Enforcement</text>
+  <text class="muted" x="64" y="108">The block is enforced by runtime state, not by asking the model to behave.</text>
+  <rect class="rule" x="64" y="148" width="832" height="88"/>
+  <text class="label" x="96" y="180">ACTIVE RULE</text>
+  <text x="96" y="209" font-size="22" font-weight="800">requires search_owasp_reference before final answer</text>
+  <rect class="blocked" x="64" y="284" width="392" height="128"/>
+  <text class="label" x="96" y="318">PREMATURE FINAL</text>
+  <text x="96" y="349" font-size="20" font-weight="800">Blocked</text>
+  <text class="muted" x="96" y="378">missing search_owasp_reference call</text>
+  <rect class="ok" x="504" y="284" width="392" height="128"/>
+  <text class="label" x="536" y="318">AFTER RETRIEVAL</text>
+  <text x="536" y="349" font-size="20" font-weight="800">Allowed</text>
+  <text class="muted" x="536" y="378">final cites returned OWASP metadata</text>
+  <text class="muted" x="64" y="462">See agent.agent_skill_policy and docs/examples/owasp-trace.json for the backing rule and sample event.</text>
+</svg>

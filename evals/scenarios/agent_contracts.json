@@ -1,0 +1,521 @@
+{
+  "scenarios": [
+    {
+      "name": "owasp_review_requires_reference_search_before_final",
+      "prompt": "security audit app.py using OWASP",
+      "arguments": {
+        "path": "app.py"
+      },
+      "expected_skill": "owasp_security_review",
+      "expected_resolved_task_type": "owasp_security_review",
+      "must_recommend_tools": [
+        "discover_review_targets"
+      ],
+      "must_allow_tools": [
+        "discover_review_targets",
+        "search_owasp_reference"
+      ],
+      "skills": [
+        {
+          "name": "owasp_security_review",
+          "description": "Review code for security issues using OWASP references.",
+          "category": "code",
+          "tags": ["owasp", "security", "audit", "review", "code", "python"],
+          "supported_actions": ["review"],
+          "supported_domains": ["code"],
+          "supported_filetypes": ["py"],
+          "required_args": ["path"],
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "path": {"type": "string"}
+            },
+            "required": ["path"],
+            "additionalProperties": false
+          },
+          "tools_required": [
+            "discover_review_targets",
+            "read_file_with_line_numbers",
+            "search_owasp_reference"
+          ],
+          "default_score": 0.7
+        }
+      ],
+      "tool_sequence": [
+        {
+          "tool": "discover_review_targets",
+          "arguments": {"root": "app.py", "max_files": 20},
+          "expect": "allowed"
+        }
+      ],
+      "final_answer": {
+        "content": "Potential issue found. OWASP says this is risky.",
+        "expect_blocked": true
+      }
+    },
+    {
+      "name": "owasp_review_allows_final_after_reference_search",
+      "prompt": "security audit app.py using OWASP",
+      "arguments": {
+        "path": "app.py"
+      },
+      "expected_skill": "owasp_security_review",
+      "expected_resolved_task_type": "owasp_security_review",
+      "must_recommend_tools": [
+        "discover_review_targets"
+      ],
+      "skills": [
+        {
+          "name": "owasp_security_review",
+          "description": "Review code for security issues using OWASP references.",
+          "category": "code",
+          "tags": ["owasp", "security", "audit", "review", "code", "python"],
+          "supported_actions": ["review"],
+          "supported_domains": ["code"],
+          "supported_filetypes": ["py"],
+          "required_args": ["path"],
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "path": {"type": "string"}
+            },
+            "required": ["path"],
+            "additionalProperties": false
+          },
+          "tools_required": [
+            "discover_review_targets",
+            "read_file_with_line_numbers",
+            "search_owasp_reference"
+          ],
+          "default_score": 0.7
+        }
+      ],
+      "tool_sequence": [
+        {
+          "tool": "discover_review_targets",
+          "arguments": {"root": "app.py", "max_files": 20},
+          "expect": "allowed"
+        },
+        {
+          "tool": "search_owasp_reference",
+          "arguments": {"query": "unsafe authentication flow", "k": 3},
+          "expect": "allowed"
+        }
+      ],
+      "final_answer": {
+        "content": "Finding cites returned OWASP reference metadata.",
+        "expect_blocked": false
+      }
+    },
+    {
+      "name": "owasp_review_blocks_wrong_tool_before_discovery",
+      "prompt": "security audit app.py using OWASP",
+      "arguments": {
+        "path": "app.py"
+      },
+      "expected_skill": "owasp_security_review",
+      "expected_resolved_task_type": "owasp_security_review",
+      "must_recommend_tools": [
+        "discover_review_targets"
+      ],
+      "skills": [
+        {
+          "name": "owasp_security_review",
+          "description": "Review code for security issues using OWASP references.",
+          "category": "code",
+          "tags": ["owasp", "security", "audit", "review", "code", "python"],
+          "supported_actions": ["review"],
+          "supported_domains": ["code"],
+          "supported_filetypes": ["py"],
+          "required_args": ["path"],
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "path": {"type": "string"}
+            },
+            "required": ["path"],
+            "additionalProperties": false
+          },
+          "tools_required": [
+            "discover_review_targets",
+            "read_file_with_line_numbers",
+            "search_owasp_reference"
+          ],
+          "default_score": 0.7
+        }
+      ],
+      "tool_sequence": [
+        {
+          "tool": "read_file",
+          "arguments": {"path": "app.py"},
+          "expect": "blocked"
+        },
+        {
+          "tool": "discover_review_targets",
+          "arguments": {"root": "app.py", "max_files": 20},
+          "expect": "allowed"
+        }
+      ]
+    },
+    {
+      "name": "owasp_review_blocks_path_escape_target",
+      "prompt": "security audit app.py using OWASP",
+      "arguments": {
+        "path": "app.py"
+      },
+      "expected_skill": "owasp_security_review",
+      "expected_resolved_task_type": "owasp_security_review",
+      "must_recommend_tools": [
+        "discover_review_targets"
+      ],
+      "skills": [
+        {
+          "name": "owasp_security_review",
+          "description": "Review code for security issues using OWASP references.",
+          "category": "code",
+          "tags": ["owasp", "security", "audit", "review", "code", "python"],
+          "supported_actions": ["review"],
+          "supported_domains": ["code"],
+          "supported_filetypes": ["py"],
+          "required_args": ["path"],
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "path": {"type": "string"}
+            },
+            "required": ["path"],
+            "additionalProperties": false
+          },
+          "tools_required": [
+            "discover_review_targets",
+            "read_file_with_line_numbers",
+            "search_owasp_reference"
+          ],
+          "default_score": 0.7
+        }
+      ],
+      "tool_sequence": [
+        {
+          "tool": "discover_review_targets",
+          "arguments": {"root": "../secrets", "max_files": 20},
+          "expect": "blocked"
+        },
+        {
+          "tool": "discover_review_targets",
+          "arguments": {"root": "app.py", "max_files": 20},
+          "expect": "allowed"
+        }
+      ]
+    },
+    {
+      "name": "owasp_review_blocks_hallucinated_reference_answer",
+      "prompt": "security audit app.py using OWASP",
+      "arguments": {
+        "path": "app.py"
+      },
+      "expected_skill": "owasp_security_review",
+      "expected_resolved_task_type": "owasp_security_review",
+      "skills": [
+        {
+          "name": "owasp_security_review",
+          "description": "Review code for security issues using OWASP references.",
+          "category": "code",
+          "tags": ["owasp", "security", "audit", "review", "code", "python"],
+          "supported_actions": ["review"],
+          "supported_domains": ["code"],
+          "supported_filetypes": ["py"],
+          "required_args": ["path"],
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "path": {"type": "string"}
+            },
+            "required": ["path"],
+            "additionalProperties": false
+          },
+          "tools_required": [
+            "discover_review_targets",
+            "read_file_with_line_numbers",
+            "search_owasp_reference"
+          ],
+          "default_score": 0.7
+        }
+      ],
+      "tool_sequence": [
+        {
+          "tool": "discover_review_targets",
+          "arguments": {"root": "app.py", "max_files": 20},
+          "expect": "allowed"
+        }
+      ],
+      "final_answer": {
+        "content": "OWASP ASVS confirms this finding even though no reference retrieval was performed.",
+        "expect_blocked": true
+      }
+    },
+    {
+      "name": "whole_file_code_overview_uses_summary_tool",
+      "prompt": "Explain auth.py",
+      "arguments": {
+        "path": "auth.py"
+      },
+      "expected_skill": "code_explainer",
+      "expected_resolved_task_type": "whole_file_code_overview",
+      "candidate_matches": [
+        {"skill_name": "code_explainer", "distance": 0.1}
+      ],
+      "must_recommend_tools": [
+        "summarize_code_file"
+      ],
+      "must_allow_tools": [
+        "summarize_code_file"
+      ],
+      "skills": [
+        {
+          "name": "code_explainer",
+          "description": "Explain code files and functions.",
+          "category": "code",
+          "tags": ["explain", "code", "python"],
+          "supported_actions": ["summarize"],
+          "supported_domains": ["code"],
+          "supported_filetypes": ["py"],
+          "required_args": ["path"],
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "path": {"type": "string"}
+            },
+            "required": ["path"],
+            "additionalProperties": false
+          },
+          "tools_required": [
+            "summarize_code_file",
+            "list_code_symbols",
+            "explain_function_for_model",
+            "read_file"
+          ],
+          "default_score": 0.7
+        }
+      ],
+      "tool_sequence": [
+        {
+          "tool": "read_file",
+          "arguments": {"path": "auth.py"},
+          "expect": "blocked"
+        },
+        {
+          "tool": "summarize_code_file",
+          "arguments": {"path": "auth.py"},
+          "expect": "allowed"
+        }
+      ]
+    },
+    {
+      "name": "function_explanation_requires_symbol_discovery",
+      "prompt": "Explain function login in auth.py",
+      "arguments": {
+        "path": "auth.py"
+      },
+      "expected_skill": "code_explainer",
+      "expected_resolved_task_type": "specific_function_explanation",
+      "candidate_matches": [
+        {"skill_name": "code_explainer", "distance": 0.1}
+      ],
+      "must_recommend_tools": [
+        "list_code_symbols",
+        "explain_function_for_model"
+      ],
+      "skills": [
+        {
+          "name": "code_explainer",
+          "description": "Explain code files and functions.",
+          "category": "code",
+          "tags": ["explain", "code", "python"],
+          "supported_actions": ["summarize"],
+          "supported_domains": ["code"],
+          "supported_filetypes": ["py"],
+          "required_args": ["path"],
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "path": {"type": "string"}
+            },
+            "required": ["path"],
+            "additionalProperties": false
+          },
+          "tools_required": [
+            "summarize_code_file",
+            "list_code_symbols",
+            "explain_function_for_model",
+            "read_file"
+          ],
+          "default_score": 0.7
+        }
+      ],
+      "tool_sequence": [
+        {
+          "tool": "explain_function_for_model",
+          "arguments": {"path": "auth.py", "symbol": "login"},
+          "expect": "blocked"
+        },
+        {
+          "tool": "list_code_symbols",
+          "arguments": {"path": "auth.py"},
+          "verified_symbols": ["login"],
+          "expect": "allowed"
+        },
+        {
+          "tool": "explain_function_for_model",
+          "arguments": {"path": "auth.py", "symbol": "login"},
+          "expect": "allowed"
+        }
+      ]
+    },
+    {
+      "name": "function_explanation_blocks_unrequested_symbol",
+      "prompt": "Explain function login in auth.py",
+      "arguments": {
+        "path": "auth.py"
+      },
+      "expected_skill": "code_explainer",
+      "expected_resolved_task_type": "specific_function_explanation",
+      "candidate_matches": [
+        {"skill_name": "code_explainer", "distance": 0.1}
+      ],
+      "must_recommend_tools": [
+        "list_code_symbols",
+        "explain_function_for_model"
+      ],
+      "skills": [
+        {
+          "name": "code_explainer",
+          "description": "Explain code files and functions.",
+          "category": "code",
+          "tags": ["explain", "code", "python"],
+          "supported_actions": ["summarize"],
+          "supported_domains": ["code"],
+          "supported_filetypes": ["py"],
+          "required_args": ["path"],
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "path": {"type": "string"}
+            },
+            "required": ["path"],
+            "additionalProperties": false
+          },
+          "tools_required": [
+            "summarize_code_file",
+            "list_code_symbols",
+            "explain_function_for_model",
+            "read_file"
+          ],
+          "default_score": 0.7
+        }
+      ],
+      "tool_sequence": [
+        {
+          "tool": "list_code_symbols",
+          "arguments": {"path": "auth.py"},
+          "verified_symbols": ["login", "logout"],
+          "expect": "allowed"
+        },
+        {
+          "tool": "explain_function_for_model",
+          "arguments": {"path": "auth.py", "symbol": "logout"},
+          "expect": "blocked"
+        },
+        {
+          "tool": "explain_function_for_model",
+          "arguments": {"path": "auth.py", "symbol": "login"},
+          "expect": "allowed"
+        }
+      ]
+    },
+    {
+      "name": "skill_authoring_blocks_direct_active_skill_writes",
+      "prompt": "create a reusable skill for debugging functions",
+      "arguments": {},
+      "expected_skill": "create_new_skill",
+      "expected_resolved_task_type": "generic_skill_procedure",
+      "candidate_matches": [
+        {"skill_name": "create_new_skill", "distance": 0.1}
+      ],
+      "must_allow_tools": [
+        "create_skill"
+      ],
+      "skills": [
+        {
+          "name": "create_new_skill",
+          "description": "Create a reusable Wallace skill.",
+          "category": "skills",
+          "tags": ["create", "skill", "reusable"],
+          "supported_actions": ["create"],
+          "supported_domains": ["skills"],
+          "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "tools_required": [
+            "create_skill",
+            "repair_skill_draft",
+            "finalize_skill_draft"
+          ],
+          "default_score": 0.9
+        }
+      ],
+      "tool_sequence": [
+        {
+          "tool": "write_file",
+          "arguments": {"path": "skill_catalog/metadatas/debug_function.json"},
+          "expect": "blocked"
+        },
+        {
+          "tool": "create_skill",
+          "arguments": {},
+          "expect": "allowed"
+        }
+      ]
+    },
+    {
+      "name": "general_question_does_not_activate_skill_policy",
+      "prompt": "what is your favorite debugging approach?",
+      "arguments": {},
+      "expected_skill": null,
+      "candidate_matches": [
+        {"skill_name": "code_explainer", "distance": 0.1}
+      ],
+      "threshold": 8.0,
+      "skills": [
+        {
+          "name": "code_explainer",
+          "description": "Explain code files and functions.",
+          "category": "code",
+          "tags": ["explain", "code", "debugging"],
+          "supported_actions": ["summarize"],
+          "supported_domains": ["code"],
+          "supported_filetypes": ["py"],
+          "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "tools_required": [
+            "summarize_code_file"
+          ],
+          "default_score": 0.4
+        }
+      ],
+      "tool_sequence": [
+        {
+          "tool": "read_file",
+          "arguments": {"path": "auth.py"},
+          "expect": "allowed"
+        }
+      ]
+    }
+  ]
+}

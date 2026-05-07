@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Wallace Runtime Architecture</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="page-shell" aria-labelledby="page-title">
+      <header class="page-header">
+        <p class="eyebrow">Wallace / agent runtime</p>
+        <h1 id="page-title">High-level runtime architecture</h1>
+      </header>
+
+      <section class="diagram" aria-label="Wallace runtime architecture diagram">
+        <svg class="connectors" viewBox="0 0 1100 2240" aria-hidden="true">
+          <defs>
+            <marker id="arrow-main" viewBox="0 0 12 12" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+              <path d="M 0 0 L 12 6 L 0 12 z"></path>
+            </marker>
+            <marker id="arrow-green" viewBox="0 0 12 12" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+              <path d="M 0 0 L 12 6 L 0 12 z"></path>
+            </marker>
+            <marker id="arrow-red" viewBox="0 0 12 12" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+              <path d="M 0 0 L 12 6 L 0 12 z"></path>
+            </marker>
+            <marker id="arrow-purple" viewBox="0 0 12 12" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+              <path d="M 0 0 L 12 6 L 0 12 z"></path>
+            </marker>
+          </defs>
+
+          <path class="connector main-line" d="M 550 110 L 550 204"></path>
+          <path class="connector main-line" d="M 550 420 L 550 514"></path>
+          <path class="connector main-line" d="M 550 695 L 550 789"></path>
+          <path class="connector main-line" d="M 550 990 L 550 1084"></path>
+          <path class="connector green-line" d="M 450 1285 L 450 1340 L 278 1340 L 278 1444"></path>
+          <path class="connector red-line" d="M 650 1285 L 650 1340 L 852 1340 L 852 1444"></path>
+          <path class="connector green-line" d="M 278 1681 L 278 1764"></path>
+          <path class="connector green-line" d="M 431 1850 L 499 1850"></path>
+          <path class="connector red-line dashed" d="M 852 1619 L 852 1850 L 791 1850"></path>
+          <path class="connector main-line" d="M 645 1951 L 645 2019"></path>
+          <path class="connector purple-line dashed" d="M 215 652 L 215 563 L 389 563"></path>
+          <path class="connector purple-line dashed" d="M 935 357 L 935 283 L 756 283"></path>
+        </svg>
+
+        <div class="node node-user top">
+          <div class="icon user-icon" aria-hidden="true"></div>
+          <h2>User Request</h2>
+        </div>
+
+        <div class="node node-runtime core">
+          <div class="icon cube-icon" aria-hidden="true"></div>
+          <h2>Wallace Runtime</h2>
+          <ul>
+            <li>manages the conversation</li>
+            <li>selects relevant skills</li>
+            <li>builds the model prompt</li>
+            <li>runs the agent loop</li>
+          </ul>
+        </div>
+
+        <div class="node node-skills core">
+          <div class="icon tree-icon" aria-hidden="true"></div>
+          <h2>Skill System</h2>
+          <ul>
+            <li>routing</li>
+            <li>procedures</li>
+            <li>tool policy</li>
+          </ul>
+        </div>
+
+        <aside class="node node-evals sidecar">
+          <div class="icon shield-icon" aria-hidden="true"></div>
+          <h2>Offline Evals</h2>
+          <ul>
+            <li>validate skill</li>
+            <li>routing, tool order, and policy behavior</li>
+          </ul>
+        </aside>
+
+        <aside class="node node-observe sidecar">
+          <span class="sidecar-label">(sidecar)</span>
+          <div class="icon chart-icon" aria-hidden="true"></div>
+          <h2>Observability</h2>
+          <ul>
+            <li>traces</li>
+            <li>metrics</li>
+            <li>runtime events</li>
+          </ul>
+        </aside>
+
+        <div class="node node-model core">
+          <div class="icon spark-icon" aria-hidden="true"></div>
+          <h2>OpenAI-Compatible Model</h2>
+          <ul>
+            <li>streams text</li>
+            <li>proposes tool calls</li>
+          </ul>
+        </div>
+
+        <div class="node node-policy core">
+          <div class="icon guard-icon" aria-hidden="true"></div>
+          <h2>Runtime Policy Gate</h2>
+          <ul>
+            <li>validates tool calls</li>
+            <li>enforces skill workflow</li>
+            <li>may block final answers</li>
+          </ul>
+        </div>
+
+        <div class="node node-tools execution">
+          <div class="icon terminal-icon" aria-hidden="true"></div>
+          <h2>Tool Execution</h2>
+          <ul>
+            <li>files / shell</li>
+            <li>code inspection</li>
+            <li>OWASP references</li>
+            <li>skill authoring</li>
+          </ul>
+        </div>
+
+        <div class="node node-feedback enforcement">
+          <div class="icon warn-icon" aria-hidden="true"></div>
+          <h2>Policy Feedback</h2>
+          <ul>
+            <li>retry with constraint</li>
+            <li>or report failure</li>
+          </ul>
+        </div>
+
+        <div class="node node-workspace execution">
+          <div class="icon folder-icon" aria-hidden="true"></div>
+          <h2>Sandboxed Workspace</h2>
+          <ul>
+            <li>workspace files</li>
+            <li>runtime state</li>
+          </ul>
+        </div>
+
+        <div class="node node-loop core">
+          <div class="icon loop-icon" aria-hidden="true"></div>
+          <h2>Runtime Loop</h2>
+          <ul>
+            <li>retry / observe</li>
+            <li>answer / stop</li>
+          </ul>
+        </div>
+
+        <div class="node node-response bottom">
+          <div class="icon group-icon" aria-hidden="true"></div>
+          <h2>User Response</h2>
+        </div>
+
+        <span class="edge-label label-validates">validates</span>
+        <span class="edge-label label-allowed">allowed</span>
+        <span class="edge-label label-blocked">blocked</span>
+      </section>
+
+      <section class="legend" aria-label="Diagram legend">
+        <div>
+          <h2>Flow Legend</h2>
+          <ul class="legend-list">
+            <li><span class="sample main-sample"></span>main flow</li>
+            <li><span class="sample allowed-sample"></span>allowed</li>
+            <li><span class="sample blocked-sample"></span>blocked</li>
+            <li><span class="sample sidecar-sample"></span>sidecar signal</li>
+          </ul>
+        </div>
+        <div>
+          <h2>Component Legend</h2>
+          <ul class="legend-list">
+            <li><span class="chip core-chip"></span>runtime core</li>
+            <li><span class="chip execution-chip"></span>execution boundary</li>
+            <li><span class="chip sidecar-chip"></span>sidecar</li>
+            <li><span class="chip enforcement-chip"></span>policy enforcement</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

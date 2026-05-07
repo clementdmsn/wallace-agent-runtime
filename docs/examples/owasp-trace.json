@@ -1,0 +1,65 @@
+{
+  "scenario": "owasp_assisted_audit",
+  "prompt": "security audit app.py using OWASP",
+  "selected_skill": "owasp_security_review",
+  "policy": {
+    "requires_reference_search_before_final": true,
+    "allowed_tools": [
+      "discover_review_targets",
+      "read_file",
+      "read_file_with_line_numbers",
+      "list_code_symbols",
+      "explain_function_for_model",
+      "search_owasp_reference"
+    ]
+  },
+  "events": [
+    {
+      "step": 1,
+      "kind": "skill",
+      "status": "ok",
+      "name": "owasp_security_review"
+    },
+    {
+      "step": 2,
+      "kind": "tool",
+      "tool": "discover_review_targets",
+      "status": "ok",
+      "args": {
+        "root": "app.py",
+        "max_files": 20
+      }
+    },
+    {
+      "step": 3,
+      "kind": "tool",
+      "tool": "read_file_with_line_numbers",
+      "status": "ok",
+      "args": {
+        "path": "app.py"
+      }
+    },
+    {
+      "step": 4,
+      "kind": "policy",
+      "status": "blocked",
+      "message": "final answer blocked before search_owasp_reference"
+    },
+    {
+      "step": 5,
+      "kind": "tool",
+      "tool": "search_owasp_reference",
+      "status": "ok",
+      "args": {
+        "query": "hardcoded secret credential exposure",
+        "k": 3
+      }
+    },
+    {
+      "step": 6,
+      "kind": "final",
+      "status": "ok",
+      "message": "citation-backed report emitted"
+    }
+  ]
+}
