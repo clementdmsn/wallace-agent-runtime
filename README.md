@@ -21,7 +21,7 @@ injects task-specific procedures into a temporary request prompt, validates tool
 calls against active policy, tracks context pressure explicitly, and checks
 critical behaviors with deterministic offline evals.
 
-![Wallace observability demo](docs/assets/observability-demo.svg)
+![Wallace runtime UI showing an OWASP security review with selected skill, policy state, and tool timeline](docs/assets/observability-demo.png)
 
 ## Trace-Driven Demo
 
@@ -94,7 +94,7 @@ must retrieve OWASP references before producing final findings.
 
 ## Architecture
 
-![Wallace architecture](docs/assets/architecture.svg)
+![Wallace high-level runtime architecture](docs/assets/wallace_high_level_diagram.png)
 
 - `web/` serves the Flask app and browser UI.
 - `agent/` owns the model loop, streaming, tool execution, metrics, traces, and
