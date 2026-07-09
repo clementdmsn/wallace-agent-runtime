@@ -19,6 +19,7 @@ def test_discover_review_targets_accepts_single_reviewable_file(monkeypatch, tmp
 
     assert result['status'] == 'ok'
     assert result['count'] == 1
+    assert isinstance(result['targets'][0], dict)
     assert result['targets'][0]['path'] == 'app.py'
     assert result['targets'][0]['suffix'] == '.py'
 
@@ -58,4 +59,5 @@ def test_discover_review_targets_reports_non_reviewable_file(monkeypatch, tmp_pa
 
     assert result['status'] == 'ok'
     assert result['count'] == 0
+    assert result['targets'] == []
     assert result['message'] == 'file extension is not in the review target allowlist'

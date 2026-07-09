@@ -14,6 +14,8 @@ from contracts.tool_results import (
     OwaspCorpusError,
     OwaspReferenceMatch,
     OwaspReferenceResult,
+    ReviewTarget,
+    ReviewTargetResult,
     SkillIndexMatch,
     SkillIndexResult,
     ToolResult,
@@ -359,4 +361,53 @@ def test_owasp_reference_result_serializes_rebuild_payload():
         'map_path': 'knowledge_base/owasp/indexes/owasp.map.json',
         'total_rows': 2,
         'matches': [],
+    }
+
+
+def test_review_target_result_serializes_targets():
+    target = ReviewTarget(
+        path='src/app.py',
+        kind='file',
+        suffix='.py',
+        size_bytes=42,
+    )
+
+    result = ReviewTargetResult(
+        status=ResultStatus.OK,
+        root='.',
+        targets=[target],
+        count=1,
+        total_candidates=3,
+        truncated=True,
+        max_files=1,
+        skipped_directories=['.git', 'node_modules'],
+    )
+
+    assert result.to_payload() == {
+        'status': 'ok',
+        'root': '.',
+        'targets': [
+            {
+                'path': 'src/app.py',
+                'kind': 'file',
+                'suffix': '.py',
+                'size_bytes': 42,
+            }
+        ],
+        'count': 1,
+        'total_candidates': 3,
+        'truncated': True,
+        'max_files': 1,
+        'skipped_directories': ['.git', 'node_modules'],
+    }
+
+
+def test_review_target_result_allows_error_without_root():
+    result = ReviewTargetResult(status=ResultStatus.ERROR, error='root must be a non-empty string')
+
+    assert result.to_payload() == {
+        'status': 'error',
+        'error': 'root must be a non-empty string',
+        'targets': [],
+        'skipped_directories': [],
     }

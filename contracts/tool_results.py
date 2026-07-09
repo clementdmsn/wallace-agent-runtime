@@ -148,3 +148,20 @@ class OwaspReferenceResult(ToolResult):
     matches: list[OwaspReferenceMatch] = Field(default_factory=list)
     expected_chunker_version: int | None = None
     actual_chunker_version: int | None = None
+
+
+class ReviewTarget(ContractModel):
+    path: str
+    kind: str
+    suffix: str
+    size_bytes: int
+
+
+class ReviewTargetResult(ToolResult):
+    root: str | None = None
+    targets: list[ReviewTarget] = Field(default_factory=list)
+    count: int | None = None
+    total_candidates: int | None = None
+    truncated: bool | None = None
+    max_files: int | None = None
+    skipped_directories: list[str] = Field(default_factory=list)
