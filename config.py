@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 import os
-from typing import Mapping
+from collections.abc import Mapping 
 
 VALID_MODEL_PROVIDERS = {'local'}
 
