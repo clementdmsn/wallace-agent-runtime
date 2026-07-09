@@ -4,6 +4,7 @@ import re
 from typing import Any
 
 from config import SETTINGS
+from contracts.tool_results import SkillAuthoringResult
 from sandbox import configured_project_path, project_relative_path, safe_path
 from skills.intent import extract_intent
 from tools.skill_index_tools import create_skill_faiss_index, rebuild_skill_faiss_index
@@ -58,6 +59,10 @@ KNOWN_TOOL_NAMES = {
 CODE_CATEGORIES = {'code', 'code_analysis', 'python', 'javascript', 'typescript'}
 CODE_MUTATION_WORDS = ('create', 'edit', 'refactor', 'fix', 'debug', 'review', 'test')
 PATH_HINT = 'Use an explicit extractable path like ./snake_game, snake_game/, src/app.py, or add a query input and resolve it with find_file.'
+
+
+def skill_authoring_result(**fields: Any) -> dict[str, Any]:
+    return SkillAuthoringResult(**fields).to_payload()
 
 
 def active_skill_metadata_dir() -> Path:
@@ -251,21 +256,21 @@ def validate_skill_routing_contract(payload: dict[str, Any]) -> list[dict[str, A
 def _metadata_field_error(payload: dict[str, Any], **extra: Any) -> dict[str, Any] | None:
     missing = sorted(field for field in REQUIRED_SKILL_METADATA_FIELDS if field not in payload)
     if missing:
-        return {
-            'status': 'error',
-            'error': 'json_payload missing required skill metadata fields',
-            'missing_fields': missing,
+        return skill_authoring_result(
+            status='error',
+            error='json_payload missing required skill metadata fields',
+            missing_fields=missing,
             **extra,
-        }
+        )
 
     unexpected = sorted(field for field in payload if field not in ALLOWED_SKILL_METADATA_FIELDS)
     if unexpected:
-        return {
-            'status': 'error',
-            'error': 'json_payload contains unknown skill metadata fields',
-            'unexpected_fields': unexpected,
+        return skill_authoring_result(
+            status='error',
+            error='json_payload contains unknown skill metadata fields',
+            unexpected_fields=unexpected,
             **extra,
-        }
+        )
 
     return None
 
@@ -606,24 +611,24 @@ def validation_failure_result(
     normalizations: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     draft = write_skill_draft(safe_title, markdown, payload)
-    return {
-        'status': 'error',
-        'error': 'json_payload failed skill quality validation',
-        'message': (
+    return skill_authoring_result(
+        status='error',
+        error='json_payload failed skill quality validation',
+        message=(
             'Draft files were written under skills/drafts only. Repair the draft files with replace_in_file, '
             'then call finalize_skill_draft. Do not edit active skill catalog files directly.'
         ),
-        'validation_errors': validation_errors,
-        'repair_instructions': build_repair_instructions(validation_errors),
-        'repair_suggestions': build_repair_suggestions(validation_errors, payload),
-        'normalizations': normalizations or [],
-        'retry_policy': (
+        validation_errors=validation_errors,
+        repair_instructions=build_repair_instructions(validation_errors),
+        repair_suggestions=build_repair_suggestions(validation_errors, payload),
+        normalizations=normalizations or [],
+        retry_policy=(
             'Prefer repair_skill_draft with repair_suggestions for metadata errors. '
             'Revise only rejected draft fields and preserve valid fields. '
             'After 3 failed finalize attempts, stop and show the latest draft paths and errors to the user.'
         ),
         **draft,
-    }
+    )
 
 
 def create_skill(
@@ -634,18 +639,18 @@ def create_skill(
 ) -> dict[str, Any]:
     try:
         if not isinstance(title, str) or not title.strip():
-            return {'status': 'error', 'error': 'title must be a non-empty string'}
+            return skill_authoring_result(status='error', error='title must be a non-empty string')
 
         if not isinstance(markdown, str) or not markdown.strip():
-            return {'status': 'error', 'error': 'markdown must be a non-empty string'}
+            return skill_authoring_result(status='error', error='markdown must be a non-empty string')
 
         if not isinstance(json_payload, dict):
-            return {'status': 'error', 'error': 'json_payload must be an object'}
+            return skill_authoring_result(status='error', error='json_payload must be an object')
 
         safe_title = safe_skill_title(title)
 
         if not safe_title:
-            return {'status': 'error', 'error': 'title produced an empty safe filename'}
+            return skill_authoring_result(status='error', error='title produced an empty safe filename')
 
         payload = dict(json_payload)
 
@@ -660,7 +665,7 @@ def create_skill(
         if field_error:
             if normalizations:
                 field_error['normalizations'] = normalizations
-            return field_error
+            return SkillAuthoringResult(**field_error).to_payload()
 
         validation_errors = validate_skill_payload(markdown, payload)
         validation_errors.extend(validate_skill_routing_contract(payload))
@@ -680,12 +685,12 @@ def create_skill(
         procedure_rel = project_relative_path(procedure_path)
 
         if metadata_path.exists() or procedure_path.exists():
-            return {
-                'status': 'error',
-                'error': 'skill already exists',
-                'metadata_path': metadata_rel,
-                'procedure_path': procedure_rel,
-            }
+            return skill_authoring_result(
+                status='error',
+                error='skill already exists',
+                metadata_path=metadata_rel,
+                procedure_path=procedure_rel,
+            )
 
         metadata_path.write_text(
             json.dumps(payload, ensure_ascii=False, indent=2),
@@ -709,14 +714,14 @@ def create_skill(
             index_result = create_skill_faiss_index(metadata_rel)
 
         if not isinstance(index_result, dict) or index_result.get('status') != 'ok':
-            return {
-                'status': 'error',
-                'error': 'skill files were written, but index update failed',
-                'skill_name': payload['name'],
-                'metadata_path': metadata_rel,
-                'procedure_path': procedure_rel,
-                'index_result': index_result,
-            }
+            return skill_authoring_result(
+                status='error',
+                error='skill files were written, but index update failed',
+                skill_name=payload['name'],
+                metadata_path=metadata_rel,
+                procedure_path=procedure_rel,
+                index_result=index_result,
+            )
 
         try:
             from skills import skills as skills_module
@@ -748,42 +753,50 @@ def create_skill(
                 'skill added and skill index updated, but in-memory skill registry reload failed'
             )
 
-        return result
+        return SkillAuthoringResult(**result).to_payload()
 
     except Exception as exc:
-        return {'status': 'error', 'error': str(exc)}
+        return skill_authoring_result(status='error', error=str(exc))
 
 
 def finalize_skill_draft(draft_id: str, rebuild_index: bool = True) -> dict[str, Any]:
     try:
         if not isinstance(draft_id, str) or not draft_id.strip():
-            return {'status': 'error', 'error': 'draft_id must be a non-empty string'}
+            return skill_authoring_result(status='error', error='draft_id must be a non-empty string')
 
         safe_title = safe_skill_title(draft_id)
         if not safe_title:
-            return {'status': 'error', 'error': 'draft_id produced an empty safe filename'}
+            return skill_authoring_result(status='error', error='draft_id produced an empty safe filename')
 
         draft_dir = safe_path('skills/drafts')
         draft_metadata_path = draft_dir / f'{safe_title}.json'
         draft_procedure_path = draft_dir / f'{safe_title}.md'
 
         if not draft_metadata_path.exists() or not draft_procedure_path.exists():
-            return {
-                'status': 'error',
-                'error': 'skill draft not found',
-                'draft_id': safe_title,
-                'draft_metadata_path': draft_metadata_path.relative_to(SETTINGS.sandbox_dir).as_posix(),
-                'draft_procedure_path': draft_procedure_path.relative_to(SETTINGS.sandbox_dir).as_posix(),
-            }
+            return skill_authoring_result(
+                status='error',
+                error='skill draft not found',
+                draft_id=safe_title,
+                draft_metadata_path=draft_metadata_path.relative_to(SETTINGS.sandbox_dir).as_posix(),
+                draft_procedure_path=draft_procedure_path.relative_to(SETTINGS.sandbox_dir).as_posix(),
+            )
 
         markdown = draft_procedure_path.read_text(encoding='utf-8')
         try:
             payload = json.loads(draft_metadata_path.read_text(encoding='utf-8'))
         except Exception as exc:
-            return {'status': 'error', 'error': f'invalid draft metadata JSON: {exc}', 'draft_id': safe_title}
+            return skill_authoring_result(
+                status='error',
+                error=f'invalid draft metadata JSON: {exc}',
+                draft_id=safe_title,
+            )
 
         if not isinstance(payload, dict):
-            return {'status': 'error', 'error': 'draft metadata JSON must be an object', 'draft_id': safe_title}
+            return skill_authoring_result(
+                status='error',
+                error='draft metadata JSON must be an object',
+                draft_id=safe_title,
+            )
 
         field_error = _metadata_field_error(payload, draft_id=safe_title)
         if field_error:
@@ -797,36 +810,44 @@ def finalize_skill_draft(draft_id: str, rebuild_index: bool = True) -> dict[str,
         return create_skill(safe_title, markdown, payload, rebuild_index=rebuild_index)
 
     except Exception as exc:
-        return {'status': 'error', 'error': str(exc)}
+        return skill_authoring_result(status='error', error=str(exc))
 
 
 def repair_skill_draft(draft_id: str, repairs: list[dict[str, Any]], normalize: bool = True) -> dict[str, Any]:
     try:
         if not isinstance(draft_id, str) or not draft_id.strip():
-            return {'status': 'error', 'error': 'draft_id must be a non-empty string'}
+            return skill_authoring_result(status='error', error='draft_id must be a non-empty string')
         if not isinstance(repairs, list):
-            return {'status': 'error', 'error': 'repairs must be an array'}
+            return skill_authoring_result(status='error', error='repairs must be an array')
 
         safe_title = safe_skill_title(draft_id)
         if not safe_title:
-            return {'status': 'error', 'error': 'draft_id produced an empty safe filename'}
+            return skill_authoring_result(status='error', error='draft_id produced an empty safe filename')
 
         draft_dir = safe_path('skills/drafts')
         draft_metadata_path = draft_dir / f'{safe_title}.json'
         draft_procedure_path = draft_dir / f'{safe_title}.md'
         if not draft_metadata_path.exists() or not draft_procedure_path.exists():
-            return {
-                'status': 'error',
-                'error': 'skill draft not found',
-                'draft_id': safe_title,
-            }
+            return skill_authoring_result(
+                status='error',
+                error='skill draft not found',
+                draft_id=safe_title,
+            )
 
         try:
             payload = json.loads(draft_metadata_path.read_text(encoding='utf-8'))
         except Exception as exc:
-            return {'status': 'error', 'error': f'invalid draft metadata JSON: {exc}', 'draft_id': safe_title}
+            return skill_authoring_result(
+                status='error',
+                error=f'invalid draft metadata JSON: {exc}',
+                draft_id=safe_title,
+            )
         if not isinstance(payload, dict):
-            return {'status': 'error', 'error': 'draft metadata JSON must be an object', 'draft_id': safe_title}
+            return skill_authoring_result(
+                status='error',
+                error='draft metadata JSON must be an object',
+                draft_id=safe_title,
+            )
 
         repaired, applied_repairs = apply_structured_repairs(payload, repairs)
         normalizations: list[dict[str, Any]] = []
@@ -842,24 +863,24 @@ def repair_skill_draft(draft_id: str, repairs: list[dict[str, Any]], normalize: 
                 'normalizations': normalizations,
                 'draft_metadata_path': draft_metadata_path.relative_to(SETTINGS.sandbox_dir).as_posix(),
             })
-            return field_error
+            return SkillAuthoringResult(**field_error).to_payload()
 
         validation_errors = validate_skill_payload(markdown, repaired)
         validation_errors.extend(validate_skill_routing_contract(repaired))
         if validation_errors:
             result = validation_failure_result(validation_errors, markdown, repaired, safe_title, normalizations)
             result['applied_repairs'] = applied_repairs
-            return result
+            return SkillAuthoringResult(**result).to_payload()
 
-        return {
-            'status': 'ok',
-            'draft_id': safe_title,
-            'draft_metadata_path': draft_metadata_path.relative_to(SETTINGS.sandbox_dir).as_posix(),
-            'draft_procedure_path': draft_procedure_path.relative_to(SETTINGS.sandbox_dir).as_posix(),
-            'applied_repairs': applied_repairs,
-            'normalizations': normalizations,
-            'message': 'skill draft repaired; call finalize_skill_draft next',
-        }
+        return skill_authoring_result(
+            status='ok',
+            draft_id=safe_title,
+            draft_metadata_path=draft_metadata_path.relative_to(SETTINGS.sandbox_dir).as_posix(),
+            draft_procedure_path=draft_procedure_path.relative_to(SETTINGS.sandbox_dir).as_posix(),
+            applied_repairs=applied_repairs,
+            normalizations=normalizations,
+            message='skill draft repaired; call finalize_skill_draft next',
+        )
 
     except Exception as exc:
-        return {'status': 'error', 'error': str(exc)}
+        return skill_authoring_result(status='error', error=str(exc))

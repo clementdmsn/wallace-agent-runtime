@@ -180,12 +180,15 @@ class SkillAuthoringResult(ToolResult):
     draft_markdown: str | None = None
     draft_json_payload: dict[str, Any] | None = None
     validation: dict[str, Any] | None = None
+    missing_fields: list[str] | None = None
+    unexpected_fields: list[str] | None = None
     validation_errors: list[dict[str, Any]] | None = None
     repair_instructions: list[str] | None = None
     repair_suggestions: list[dict[str, Any]] | None = None
-    retry_policy: dict[str, Any] | None = None
+    retry_policy: dict[str, Any] | str | None = None
     retry_limit_reached: bool | None = None
     index_result: dict[str, Any] | None = None
     registry_reloaded: bool | None = None
     registry_reload_error: str | None = None
     normalizations: list[dict[str, Any]] | None = None
+    applied_repairs: list[dict[str, Any]] | None = None
