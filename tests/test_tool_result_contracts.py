@@ -44,6 +44,24 @@ def test_generic_tool_result_excludes_empty_optional_fields():
     }
 
 
+def test_generic_tool_result_supports_line_numbered_payloads():
+    result = GenericToolResult(
+        status=ResultStatus.OK,
+        path='app.py',
+        content='1: print("hello")\n',
+        truncated=False,
+        line_numbered=True,
+    )
+
+    assert result.to_payload() == {
+        'status': 'ok',
+        'path': 'app.py',
+        'content': '1: print("hello")\n',
+        'truncated': False,
+        'line_numbered': True,
+    }
+
+
 def test_generic_tool_result_rejects_unknown_fields():
     with pytest.raises(ValidationError):
         GenericToolResult(status='ok', unexpected='value')

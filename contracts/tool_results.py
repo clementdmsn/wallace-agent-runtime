@@ -23,6 +23,7 @@ class GenericToolResult(ToolResult):
     stderr_truncated: bool | None = None
     content: str | None = None
     truncated: bool | None = None
+    line_numbered: bool | None = None
     matches: list[str] | None = None
     count: int | None = None
     replacements: int | None = None
