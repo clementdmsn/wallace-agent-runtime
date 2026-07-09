@@ -10,7 +10,7 @@ from agent.agent_skill_policy import (
     remember_verified_symbols,
     validate_tool_call_against_skill_policy,
 )
-from skills.skills import record_skill_event
+from skills.stats import record_skill_event
 from tools.tools import TOOLS
 
 

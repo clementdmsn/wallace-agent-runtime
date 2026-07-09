@@ -6,7 +6,7 @@ from typing import Any
 
 from flask import Flask, jsonify, request, send_from_directory
 
-from agent import Agent
+from agent.agent import Agent
 from agent.agent_tool_execution import append_resolved_tool_result
 from config import SETTINGS, env_bool
 from tools.curl_tool import add_domain_to_whitelist

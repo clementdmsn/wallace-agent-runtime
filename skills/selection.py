@@ -6,7 +6,7 @@ from typing import Any
 from skills.intent import extract_intent
 from skills.skills_registry import Skill
 from skills.stats import get_skill_score_bonus, record_skill_event
-from tools.tools import search_skill_faiss_index
+from tools.skill_index_tools import search_skill_faiss_index
 
 
 SKILL_AUTHORING_TOKENS = {
