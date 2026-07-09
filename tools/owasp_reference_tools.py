@@ -11,6 +11,7 @@ import faiss
 import numpy as np
 
 from config import SETTINGS
+from contracts.tool_results import OwaspCorpusError, OwaspReferenceMatch, OwaspReferenceResult
 from sandbox import configured_sandbox_path
 from tools.embedding import embed_texts
 
@@ -34,6 +35,10 @@ SUPPORTED_OWASP_SOURCES = {'ASVS', 'Top10'}
 SUPPORTED_OWASP_VERSIONS = {'5.0.0', '2025'}
 
 _INDEX_WRITE_LOCK = threading.Lock()
+
+
+def owasp_result(**fields: Any) -> dict[str, Any]:
+    return OwaspReferenceResult(**fields).to_payload()
 
 
 def _base_reference_map() -> dict[str, Any]:
@@ -137,15 +142,15 @@ def load_owasp_corpus(corpus_path: str = OWASP_DEFAULT_CORPUS_PATH) -> tuple[lis
 def validate_owasp_corpus(corpus_path: str = OWASP_DEFAULT_CORPUS_PATH) -> dict[str, Any]:
     try:
         records, errors, raw = load_owasp_corpus(corpus_path)
-        return {
-            'status': 'ok' if not errors else 'error',
-            'path': corpus_path,
-            'record_count': len(records),
-            'errors': errors,
-            'content_hash': hashlib.sha256(raw.encode('utf-8')).hexdigest(),
-        }
+        return owasp_result(
+            status='ok' if not errors else 'error',
+            path=corpus_path,
+            record_count=len(records),
+            errors=[OwaspCorpusError(**error) for error in errors],
+            content_hash=hashlib.sha256(raw.encode('utf-8')).hexdigest(),
+        )
     except Exception as exc:
-        return {'status': 'error', 'path': corpus_path, 'error': str(exc)}
+        return owasp_result(status='error', path=corpus_path, error=str(exc))
 
 
 def _record_embedding_text(record: dict[str, str]) -> str:
@@ -166,18 +171,25 @@ def rebuild_owasp_reference_index(
     try:
         records, errors, raw = load_owasp_corpus(corpus_path)
         if errors:
-            return {'status': 'error', 'path': corpus_path, 'errors': errors}
+            return owasp_result(
+                status='error',
+                path=corpus_path,
+                errors=[OwaspCorpusError(**error) for error in errors],
+            )
         if not records:
-            return {'status': 'error', 'path': corpus_path, 'error': 'no valid OWASP corpus records found'}
+            return owasp_result(status='error', path=corpus_path, error='no valid OWASP corpus records found')
 
         chunks = [_record_embedding_text(record) for record in records]
         vectors = embed_texts(chunks)
         if len(vectors) != len(chunks):
-            return {'status': 'error', 'error': 'embedding backend returned a different number of vectors than records'}
+            return owasp_result(
+                status='error',
+                error='embedding backend returned a different number of vectors than records',
+            )
 
         matrix = np.asarray(vectors, dtype='float32')
         if matrix.ndim != 2 or matrix.shape[0] == 0:
-            return {'status': 'error', 'error': 'embedding output must be a non-empty 2D array'}
+            return owasp_result(status='error', error='embedding output must be a non-empty 2D array')
 
         index = faiss.IndexFlatL2(int(matrix.shape[1]))
         index.add(matrix)
@@ -199,16 +211,16 @@ def rebuild_owasp_reference_index(
         with _INDEX_WRITE_LOCK:
             _atomic_write_index_and_map(index, index_path, map_path, reference_map)
 
-        return {
-            'status': 'ok',
-            'index_path': index_path.relative_to(sandbox_root).as_posix(),
-            'map_path': map_path.relative_to(sandbox_root).as_posix(),
-            'record_count': len(records),
-            'total_rows': int(index.ntotal),
-            'message': 'OWASP reference index rebuilt',
-        }
+        return owasp_result(
+            status='ok',
+            index_path=index_path.relative_to(sandbox_root).as_posix(),
+            map_path=map_path.relative_to(sandbox_root).as_posix(),
+            record_count=len(records),
+            total_rows=int(index.ntotal),
+            message='OWASP reference index rebuilt',
+        )
     except Exception as exc:
-        return {'status': 'error', 'error': str(exc)}
+        return owasp_result(status='error', error=str(exc))
 
 
 def search_owasp_reference(
@@ -219,56 +231,61 @@ def search_owasp_reference(
 ) -> dict[str, Any]:
     try:
         if not isinstance(query, str):
-            return {'status': 'error', 'error': 'query must be a string'}
+            return owasp_result(status='error', error='query must be a string')
         query = query.strip()
         if not query:
-            return {'status': 'error', 'error': 'empty query'}
+            return owasp_result(status='error', error='empty query')
         if not isinstance(k, int) or k <= 0:
-            return {'status': 'error', 'error': 'k must be a positive integer'}
+            return owasp_result(status='error', error='k must be a positive integer')
 
         index_path, map_path = _index_file_paths(index_dir, index_name)
         if not index_path.exists() or not map_path.exists():
-            return {'status': 'error', 'error': 'OWASP reference index does not exist'}
+            return owasp_result(status='error', error='OWASP reference index does not exist')
 
         vectors = embed_texts([query])
         matrix = np.asarray(vectors, dtype='float32')
         if matrix.ndim != 2 or matrix.shape[0] != 1:
-            return {'status': 'error', 'error': 'embedding backend must return exactly one query vector'}
+            return owasp_result(status='error', error='embedding backend must return exactly one query vector')
 
         index = faiss.read_index(str(index_path))
         if matrix.shape[1] != index.d:
-            return {'status': 'error', 'error': f'query embedding dimension mismatch: index={index.d}, query={matrix.shape[1]}'}
+            return owasp_result(
+                status='error',
+                error=f'query embedding dimension mismatch: index={index.d}, query={matrix.shape[1]}',
+            )
 
         reference_map = json.loads(map_path.read_text(encoding='utf-8'))
         if reference_map.get('chunker_version') != OWASP_INDEX_CHUNKER_VERSION:
-            return {
-                'status': 'error',
-                'error': 'OWASP reference index is stale; run rebuild_owasp_reference_index before searching',
-                'expected_chunker_version': OWASP_INDEX_CHUNKER_VERSION,
-                'actual_chunker_version': reference_map.get('chunker_version'),
-            }
+            return owasp_result(
+                status='error',
+                error='OWASP reference index is stale; run rebuild_owasp_reference_index before searching',
+                expected_chunker_version=OWASP_INDEX_CHUNKER_VERSION,
+                actual_chunker_version=reference_map.get('chunker_version'),
+            )
 
         by_row_id = {int(record['row_id']): record for record in reference_map.get('records', [])}
         distances, ids = index.search(matrix, k)
-        matches: list[dict[str, Any]] = []
+        matches: list[OwaspReferenceMatch] = []
         for row_id, distance in zip(ids[0], distances[0], strict=False):
             if row_id < 0:
                 continue
             record = by_row_id.get(int(row_id))
             if not record:
                 continue
-            matches.append({
-                'row_id': int(row_id),
-                'distance': float(distance),
-                'source': record['source'],
-                'version': record['version'],
-                'reference_id': record['reference_id'],
-                'title': record['title'],
-                'category': record['category'],
-                'url': record['url'],
-                'text': record['text'],
-            })
+            matches.append(
+                OwaspReferenceMatch(
+                    row_id=int(row_id),
+                    distance=float(distance),
+                    source=record['source'],
+                    version=record['version'],
+                    reference_id=record['reference_id'],
+                    title=record['title'],
+                    category=record['category'],
+                    url=record['url'],
+                    text=record['text'],
+                )
+            )
 
-        return {'status': 'ok', 'query': query, 'count': len(matches), 'matches': matches}
+        return owasp_result(status='ok', query=query, count=len(matches), matches=matches)
     except Exception as exc:
-        return {'status': 'error', 'error': str(exc)}
+        return owasp_result(status='error', error=str(exc))

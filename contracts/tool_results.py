@@ -116,3 +116,35 @@ class SkillIndexResult(ToolResult):
     matches: list[SkillIndexMatch] = Field(default_factory=list)
     expected_chunker_version: int | None = None
     actual_chunker_version: int | None = None
+
+
+class OwaspCorpusError(ContractModel):
+    line: int
+    error: str
+
+
+class OwaspReferenceMatch(ContractModel):
+    row_id: int
+    distance: float
+    source: str
+    version: str
+    reference_id: str
+    title: str
+    category: str
+    url: str
+    text: str
+
+
+class OwaspReferenceResult(ToolResult):
+    path: str | None = None
+    record_count: int | None = None
+    errors: list[OwaspCorpusError] = Field(default_factory=list)
+    content_hash: str | None = None
+    index_path: str | None = None
+    map_path: str | None = None
+    total_rows: int | None = None
+    query: str | None = None
+    count: int | None = None
+    matches: list[OwaspReferenceMatch] = Field(default_factory=list)
+    expected_chunker_version: int | None = None
+    actual_chunker_version: int | None = None

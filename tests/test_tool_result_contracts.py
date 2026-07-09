@@ -11,6 +11,9 @@ from contracts.tool_results import (
     GenericToolResult,
     ListCodeSymbolsResult,
     ExplainFunctionResult,
+    OwaspCorpusError,
+    OwaspReferenceMatch,
+    OwaspReferenceResult,
     SkillIndexMatch,
     SkillIndexResult,
     ToolResult,
@@ -265,6 +268,95 @@ def test_skill_index_result_serializes_index_write_payload():
         'map_path': 'skills/indexes/skills.map.json',
         'created': True,
         'rows_added': 2,
+        'total_rows': 2,
+        'matches': [],
+    }
+
+
+def test_owasp_reference_result_serializes_corpus_validation_errors():
+    error = OwaspCorpusError(line=3, error='missing required field(s): text')
+
+    result = OwaspReferenceResult(
+        status=ResultStatus.ERROR,
+        path='knowledge_base/owasp/corpus.jsonl',
+        record_count=1,
+        errors=[error],
+        content_hash='abc123',
+    )
+
+    assert result.to_payload() == {
+        'status': 'error',
+        'path': 'knowledge_base/owasp/corpus.jsonl',
+        'record_count': 1,
+        'errors': [
+            {
+                'line': 3,
+                'error': 'missing required field(s): text',
+            }
+        ],
+        'content_hash': 'abc123',
+        'matches': [],
+    }
+
+
+def test_owasp_reference_result_serializes_search_matches():
+    match = OwaspReferenceMatch(
+        row_id=0,
+        distance=0.5,
+        source='ASVS',
+        version='5.0.0',
+        reference_id='v5.0.0-V1.2.4',
+        title='Injection Prevention',
+        category='Encoding and Sanitization',
+        url='https://github.com/OWASP/ASVS/releases/tag/v5.0.0_release',
+        text='Verify that database queries use parameterized queries to prevent injection.',
+    )
+
+    result = OwaspReferenceResult(
+        status=ResultStatus.OK,
+        query='sql injection query',
+        count=1,
+        matches=[match],
+    )
+
+    assert result.to_payload() == {
+        'status': 'ok',
+        'query': 'sql injection query',
+        'count': 1,
+        'errors': [],
+        'matches': [
+            {
+                'row_id': 0,
+                'distance': 0.5,
+                'source': 'ASVS',
+                'version': '5.0.0',
+                'reference_id': 'v5.0.0-V1.2.4',
+                'title': 'Injection Prevention',
+                'category': 'Encoding and Sanitization',
+                'url': 'https://github.com/OWASP/ASVS/releases/tag/v5.0.0_release',
+                'text': 'Verify that database queries use parameterized queries to prevent injection.',
+            }
+        ],
+    }
+
+
+def test_owasp_reference_result_serializes_rebuild_payload():
+    result = OwaspReferenceResult(
+        status=ResultStatus.OK,
+        index_path='knowledge_base/owasp/indexes/owasp.faiss',
+        map_path='knowledge_base/owasp/indexes/owasp.map.json',
+        record_count=2,
+        total_rows=2,
+        message='OWASP reference index rebuilt',
+    )
+
+    assert result.to_payload() == {
+        'status': 'ok',
+        'message': 'OWASP reference index rebuilt',
+        'record_count': 2,
+        'errors': [],
+        'index_path': 'knowledge_base/owasp/indexes/owasp.faiss',
+        'map_path': 'knowledge_base/owasp/indexes/owasp.map.json',
         'total_rows': 2,
         'matches': [],
     }
