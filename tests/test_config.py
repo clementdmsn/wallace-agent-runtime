@@ -27,7 +27,9 @@ def test_config_defaults_to_local_provider(monkeypatch):
     assert config.SETTINGS.api_key == 'lmstudio'
     assert config.SETTINGS.host == '127.0.0.1'
     assert config.SETTINGS.port == 8000
-    assert config.SETTINGS.project_dir.as_posix() == '/opt/wallace'
+    assert config.SETTINGS.project_dir == config.DEFAULT_PROJECT_DIR
+    assert config.SETTINGS.sandbox_dir == config.DEFAULT_SANDBOX_DIR
+    assert config.SETTINGS.curl_whitelist_path == config.DEFAULT_CURL_WHITELIST_PATH
     assert config.SETTINGS.skill_metadata_dir == 'skill_catalog/metadatas'
     assert config.SETTINGS.skill_procedure_dir == 'skill_catalog/procedures'
     assert config.SETTINGS.skill_index_dir == 'skills/indexes'
