@@ -1,9 +1,15 @@
+from collections.abc import Mapping
 from dataclasses import dataclass
-from pathlib import Path
 import os
-from typing import Mapping
+from pathlib import Path
 
 VALID_MODEL_PROVIDERS = {'local'}
+
+PROJECT_ROOT = Path(__file__).resolve().parent
+
+DEFAULT_PROJECT_DIR = PROJECT_ROOT
+DEFAULT_SANDBOX_DIR = PROJECT_ROOT / "sandbox"
+DEFAULT_CURL_WHITELIST_PATH = PROJECT_ROOT / ".local" / "curl_whitelist.json"
 
 
 def env_text(name: str, default: str, env: Mapping[str, str] | None = None) -> str:
@@ -62,11 +68,11 @@ def chat_model_name(provider: str, env: Mapping[str, str] | None = None) -> str:
 
 @dataclass(frozen=True)
 class Settings:
-    project_dir: Path = Path('/opt/wallace')
+    project_dir: Path = Path(DEFAULT_PROJECT_DIR)
     host: str = '127.0.0.1'
     port: int = 8000
-    sandbox_dir: Path = Path('/opt/wallace/sandbox')
-    curl_whitelist_path: Path = Path('/var/lib/wallace/curl_whitelist.json')
+    sandbox_dir: Path = Path(DEFAULT_SANDBOX_DIR)
+    curl_whitelist_path: Path = Path(DEFAULT_CURL_WHITELIST_PATH)
     model_provider: str = 'local'
     model_name: str = 'unsloth/qwen3-4b-instruct-2507'
     embedding_model_name: str = 'unsloth/qwen3-4b-instruct-2507'
@@ -91,10 +97,10 @@ def build_settings(env: Mapping[str, str] | None = None) -> Settings:
     default_model = chat_model_name(provider, env)
     return Settings(
         host=env.get('WALLACE_HOST', '127.0.0.1'),
-        project_dir=Path(env.get('WALLACE_PROJECT_DIR', '/opt/wallace')),
+        project_dir=Path(env.get('WALLACE_PROJECT_DIR', str(DEFAULT_PROJECT_DIR))),
         port=env_int('WALLACE_PORT', 8000, env=env),
-        sandbox_dir=Path(env.get('WALLACE_SANDBOX_DIR', '/opt/wallace/sandbox')),
-        curl_whitelist_path=Path(env.get('WALLACE_CURL_WHITELIST_PATH', '/var/lib/wallace/curl_whitelist.json')),
+        sandbox_dir=Path(env.get('WALLACE_SANDBOX_DIR', str(DEFAULT_SANDBOX_DIR))),
+        curl_whitelist_path=Path(env.get('WALLACE_CURL_WHITELIST_PATH', str(DEFAULT_CURL_WHITELIST_PATH))),
         model_provider=provider,
         model_name=default_model,
         embedding_model_name=env_text('WALLACE_EMBEDDING_MODEL', default_model, env),
