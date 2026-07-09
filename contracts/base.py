@@ -1,0 +1,19 @@
+from __future__ import annotations
+
+from enum import StrEnum
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict
+
+
+class ResultStatus(StrEnum):
+    OK = 'ok'
+    ERROR = 'error'
+    APPROVAL_REQUIRED = 'approval_required'
+
+
+class ContractModel(BaseModel):
+    model_config = ConfigDict(extra='forbid', use_enum_values=True, validate_assignment=True)
+
+    def to_payload(self) -> dict[str, Any]:
+        return self.model_dump(exclude_none=True)
