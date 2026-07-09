@@ -16,6 +16,7 @@ from contracts.tool_results import (
     OwaspReferenceResult,
     ReviewTarget,
     ReviewTargetResult,
+    SkillAuthoringResult,
     SkillIndexMatch,
     SkillIndexResult,
     ToolResult,
@@ -410,4 +411,96 @@ def test_review_target_result_allows_error_without_root():
         'error': 'root must be a non-empty string',
         'targets': [],
         'skipped_directories': [],
+    }
+
+
+def test_skill_authoring_result_serializes_created_skill_payload():
+    result = SkillAuthoringResult(
+        status=ResultStatus.OK,
+        skill_name='demo_skill',
+        skill_id='demo_skill',
+        description='Create a demo skill for tests.',
+        procedure='1. Do the task.',
+        metadata_path='skill_catalog/metadatas/demo_skill.json',
+        procedure_path='skill_catalog/procedures/demo_skill.md',
+        index_result={'status': 'ok'},
+        registry_reloaded=True,
+        normalizations=[
+            {
+                'field': 'trigger_actions',
+                'action': 'converted_questions_to_instruction_text',
+            }
+        ],
+    )
+
+    assert result.to_payload() == {
+        'status': 'ok',
+        'skill_name': 'demo_skill',
+        'skill_id': 'demo_skill',
+        'description': 'Create a demo skill for tests.',
+        'procedure': '1. Do the task.',
+        'metadata_path': 'skill_catalog/metadatas/demo_skill.json',
+        'procedure_path': 'skill_catalog/procedures/demo_skill.md',
+        'index_result': {'status': 'ok'},
+        'registry_reloaded': True,
+        'normalizations': [
+            {
+                'field': 'trigger_actions',
+                'action': 'converted_questions_to_instruction_text',
+            }
+        ],
+    }
+
+
+def test_skill_authoring_result_serializes_validation_failure_payload():
+    result = SkillAuthoringResult(
+        status=ResultStatus.ERROR,
+        error='json_payload failed skill quality validation',
+        message='Draft files were written under skills/drafts only.',
+        draft_id='demo_skill',
+        draft_metadata_path='skills/drafts/demo_skill.json',
+        draft_procedure_path='skills/drafts/demo_skill.md',
+        validation_errors=[
+            {
+                'field': 'inputs',
+                'message': 'input keys must match runtime-extracted argument names',
+                'value': {'unknown_inputs': ['file_path']},
+            }
+        ],
+        repair_instructions=['Use runtime input keys only and schema objects.'],
+        repair_suggestions=[
+            {
+                'field': 'inputs',
+                'replace': 'file_path',
+                'with': 'path',
+            }
+        ],
+        retry_policy={'max_repairs': 2},
+        retry_limit_reached=False,
+    )
+
+    assert result.to_payload() == {
+        'status': 'error',
+        'message': 'Draft files were written under skills/drafts only.',
+        'error': 'json_payload failed skill quality validation',
+        'draft_id': 'demo_skill',
+        'draft_metadata_path': 'skills/drafts/demo_skill.json',
+        'draft_procedure_path': 'skills/drafts/demo_skill.md',
+        'validation_errors': [
+            {
+                'field': 'inputs',
+                'message': 'input keys must match runtime-extracted argument names',
+                'value': {'unknown_inputs': ['file_path']},
+            }
+        ],
+        'repair_instructions': ['Use runtime input keys only and schema objects.'],
+        'repair_suggestions': [
+            {
+                'field': 'inputs',
+                'replace': 'file_path',
+                'with': 'path',
+            }
+        ],
+        'retry_policy': {'max_repairs': 2},
+        'retry_limit_reached': False,
     }

@@ -165,3 +165,27 @@ class ReviewTargetResult(ToolResult):
     truncated: bool | None = None
     max_files: int | None = None
     skipped_directories: list[str] = Field(default_factory=list)
+
+
+class SkillAuthoringResult(ToolResult):
+    skill_name: str | None = None
+    skill_id: str | None = None
+    description: str | None = None
+    procedure: str | None = None
+    metadata_path: str | None = None
+    procedure_path: str | None = None
+    draft_id: str | None = None
+    draft_metadata_path: str | None = None
+    draft_procedure_path: str | None = None
+    draft_markdown: str | None = None
+    draft_json_payload: dict[str, Any] | None = None
+    validation: dict[str, Any] | None = None
+    validation_errors: list[dict[str, Any]] | None = None
+    repair_instructions: list[str] | None = None
+    repair_suggestions: list[dict[str, Any]] | None = None
+    retry_policy: dict[str, Any] | None = None
+    retry_limit_reached: bool | None = None
+    index_result: dict[str, Any] | None = None
+    registry_reloaded: bool | None = None
+    registry_reload_error: str | None = None
+    normalizations: list[dict[str, Any]] | None = None
