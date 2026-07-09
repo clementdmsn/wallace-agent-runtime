@@ -91,3 +91,28 @@ class CurlResult(ToolResult):
     content: str | None = None
     truncated: bool | None = None
     approval_id: str | None = None
+
+
+class SkillIndexMatch(ContractModel):
+    row_id: int
+    distance: float
+    skill_name: str
+    source_path: str
+    chunk_index: int
+    text: str
+
+
+class SkillIndexResult(ToolResult):
+    path: str | None = None
+    index_path: str | None = None
+    map_path: str | None = None
+    created: bool | None = None
+    skipped: bool | None = None
+    rows_added: int | None = None
+    total_rows: int | None = None
+    source_count: int | None = None
+    query: str | None = None
+    count: int | None = None
+    matches: list[SkillIndexMatch] = Field(default_factory=list)
+    expected_chunker_version: int | None = None
+    actual_chunker_version: int | None = None

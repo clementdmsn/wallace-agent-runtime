@@ -11,6 +11,8 @@ from contracts.tool_results import (
     GenericToolResult,
     ListCodeSymbolsResult,
     ExplainFunctionResult,
+    SkillIndexMatch,
+    SkillIndexResult,
     ToolResult,
 )
 
@@ -206,4 +208,63 @@ def test_curl_result_serializes_approval_payload():
         'url': 'https://docs.python.org/3/',
         'domain': 'docs.python.org',
         'approval_id': 'curl:docs.python.org:123',
+    }
+
+
+def test_skill_index_result_serializes_search_matches():
+    match = SkillIndexMatch(
+        row_id=3,
+        distance=0.25,
+        skill_name='demo_skill',
+        source_path='skill_catalog/metadatas/demo.json',
+        chunk_index=1,
+        text='summary: Demo',
+    )
+
+    result = SkillIndexResult(
+        status=ResultStatus.OK,
+        query='demo',
+        count=1,
+        matches=[match],
+    )
+
+    assert result.to_payload() == {
+        'status': 'ok',
+        'query': 'demo',
+        'count': 1,
+        'matches': [
+            {
+                'row_id': 3,
+                'distance': 0.25,
+                'skill_name': 'demo_skill',
+                'source_path': 'skill_catalog/metadatas/demo.json',
+                'chunk_index': 1,
+                'text': 'summary: Demo',
+            }
+        ],
+    }
+
+
+def test_skill_index_result_serializes_index_write_payload():
+    result = SkillIndexResult(
+        status=ResultStatus.OK,
+        path='skill_catalog/metadatas/demo.json',
+        index_path='skills/indexes/skills.faiss',
+        map_path='skills/indexes/skills.map.json',
+        created=True,
+        rows_added=2,
+        total_rows=2,
+        message='skill metadata added to FAISS index',
+    )
+
+    assert result.to_payload() == {
+        'status': 'ok',
+        'message': 'skill metadata added to FAISS index',
+        'path': 'skill_catalog/metadatas/demo.json',
+        'index_path': 'skills/indexes/skills.faiss',
+        'map_path': 'skills/indexes/skills.map.json',
+        'created': True,
+        'rows_added': 2,
+        'total_rows': 2,
+        'matches': [],
     }

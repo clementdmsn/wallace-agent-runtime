@@ -9,6 +9,7 @@ import faiss
 import numpy as np
 
 from config import SETTINGS
+from contracts.tool_results import SkillIndexMatch, SkillIndexResult
 from sandbox import configured_project_path, configured_sandbox_path, project_relative_path
 from tools.embedding import embed_texts
 
@@ -16,6 +17,10 @@ from tools.embedding import embed_texts
 SKILL_INDEX_SCHEMA_VERSION = 2
 SKILL_INDEX_CHUNKER_VERSION = 3
 _INDEX_WRITE_LOCK = threading.Lock()
+
+
+def skill_index_result(**fields: Any) -> dict[str, Any]:
+    return SkillIndexResult(**fields).to_payload()
 
 
 def _metadata_source_path(metadata_json_path: str) -> Path:
@@ -147,27 +152,23 @@ def create_skill_faiss_index(
     try:
         source_path = _metadata_source_path(metadata_json_path)
         if source_path.suffix.lower() != '.json':
-            return {
-                'status': 'error',
-                'path': metadata_json_path,
-                'error': 'metadata_json_path must point to a .json file',
-            }
+            return skill_index_result(
+                status='error',
+                path=metadata_json_path,
+                error='metadata_json_path must point to a .json file',
+            )
         if not source_path.exists():
-            return {
-                'status': 'error',
-                'path': metadata_json_path,
-                'error': 'metadata file does not exist',
-            }
+            return skill_index_result(status='error', path=metadata_json_path, error='metadata file does not exist')
 
         raw = source_path.read_text(encoding='utf-8')
         data = json.loads(raw)
         chunks = _chunk_skill_metadata(data)
         if not chunks:
-            return {
-                'status': 'error',
-                'path': metadata_json_path,
-                'error': 'metadata file produced no embeddable content',
-            }
+            return skill_index_result(
+                status='error',
+                path=metadata_json_path,
+                error='metadata file produced no embeddable content',
+            )
 
         source_hash = hashlib.sha256(raw.encode('utf-8')).hexdigest()
         source_rel = _source_rel(source_path)
@@ -179,75 +180,75 @@ def create_skill_faiss_index(
 
             if existing_source:
                 if existing_source.get('content_hash') == source_hash:
-                    return {
-                        'status': 'ok',
-                        'path': metadata_json_path,
-                        'index_path': index_path.relative_to(SETTINGS.sandbox_dir).as_posix(),
-                        'map_path': map_path.relative_to(SETTINGS.sandbox_dir).as_posix(),
-                        'created': False,
-                        'skipped': True,
-                        'message': 'source already indexed and up to date',
-                    }
-                return {
-                    'status': 'error',
-                    'path': metadata_json_path,
-                    'error': 'source already indexed with different content; run a rebuild flow to refresh the shared index',
-                }
+                    return skill_index_result(
+                        status='ok',
+                        path=metadata_json_path,
+                        index_path=index_path.relative_to(SETTINGS.sandbox_dir).as_posix(),
+                        map_path=map_path.relative_to(SETTINGS.sandbox_dir).as_posix(),
+                        created=False,
+                        skipped=True,
+                        message='source already indexed and up to date',
+                    )
+                return skill_index_result(
+                    status='error',
+                    path=metadata_json_path,
+                    error='source already indexed with different content; run a rebuild flow to refresh the shared index',
+                )
 
         if skill_map.get('chunker_version') not in (None, SKILL_INDEX_CHUNKER_VERSION):
-            return {
-                'status': 'error',
-                'path': metadata_json_path,
-                'error': 'existing skill index was built with an older metadata chunker; run rebuild_skill_faiss_index',
-                'expected_chunker_version': SKILL_INDEX_CHUNKER_VERSION,
-                'actual_chunker_version': skill_map.get('chunker_version'),
-            }
+            return skill_index_result(
+                status='error',
+                path=metadata_json_path,
+                error='existing skill index was built with an older metadata chunker; run rebuild_skill_faiss_index',
+                expected_chunker_version=SKILL_INDEX_CHUNKER_VERSION,
+                actual_chunker_version=skill_map.get('chunker_version'),
+            )
         skill_map['version'] = SKILL_INDEX_SCHEMA_VERSION
         skill_map['chunker_version'] = SKILL_INDEX_CHUNKER_VERSION
 
         vectors = embed_texts(chunks)
         if len(vectors) != len(chunks):
-            return {
-                'status': 'error',
-                'path': metadata_json_path,
-                'error': 'embedding backend returned a different number of vectors than chunks',
-            }
+            return skill_index_result(
+                status='error',
+                path=metadata_json_path,
+                error='embedding backend returned a different number of vectors than chunks',
+            )
 
         matrix = np.asarray(vectors, dtype='float32')
         if matrix.ndim != 2 or matrix.shape[0] == 0:
-            return {
-                'status': 'error',
-                'path': metadata_json_path,
-                'error': 'embedding output must be a non-empty 2D array',
-            }
+            return skill_index_result(
+                status='error',
+                path=metadata_json_path,
+                error='embedding output must be a non-empty 2D array',
+            )
 
         with _INDEX_WRITE_LOCK:
             skill_map = _load_or_create_map(map_path)
             if skill_map.get('chunker_version') not in (None, SKILL_INDEX_CHUNKER_VERSION):
-                return {
-                    'status': 'error',
-                    'path': metadata_json_path,
-                    'error': 'existing skill index was built with an older metadata chunker; run rebuild_skill_faiss_index',
-                    'expected_chunker_version': SKILL_INDEX_CHUNKER_VERSION,
-                    'actual_chunker_version': skill_map.get('chunker_version'),
-                }
+                return skill_index_result(
+                    status='error',
+                    path=metadata_json_path,
+                    error='existing skill index was built with an older metadata chunker; run rebuild_skill_faiss_index',
+                    expected_chunker_version=SKILL_INDEX_CHUNKER_VERSION,
+                    actual_chunker_version=skill_map.get('chunker_version'),
+                )
             existing_source = skill_map['sources'].get(source_rel)
             if existing_source:
                 if existing_source.get('content_hash') == source_hash:
-                    return {
-                        'status': 'ok',
-                        'path': metadata_json_path,
-                        'index_path': index_path.relative_to(SETTINGS.sandbox_dir).as_posix(),
-                        'map_path': map_path.relative_to(SETTINGS.sandbox_dir).as_posix(),
-                        'created': False,
-                        'skipped': True,
-                        'message': 'source already indexed and up to date',
-                    }
-                return {
-                    'status': 'error',
-                    'path': metadata_json_path,
-                    'error': 'source already indexed with different content; run a rebuild flow to refresh the shared index',
-                }
+                    return skill_index_result(
+                        status='ok',
+                        path=metadata_json_path,
+                        index_path=index_path.relative_to(SETTINGS.sandbox_dir).as_posix(),
+                        map_path=map_path.relative_to(SETTINGS.sandbox_dir).as_posix(),
+                        created=False,
+                        skipped=True,
+                        message='source already indexed and up to date',
+                    )
+                return skill_index_result(
+                    status='error',
+                    path=metadata_json_path,
+                    error='source already indexed with different content; run a rebuild flow to refresh the shared index',
+                )
 
             skill_map['version'] = SKILL_INDEX_SCHEMA_VERSION
             skill_map['chunker_version'] = SKILL_INDEX_CHUNKER_VERSION
@@ -275,19 +276,19 @@ def create_skill_faiss_index(
 
             _atomic_write_index_and_map(index, index_path, map_path, skill_map)
 
-        return {
-            'status': 'ok',
-            'path': metadata_json_path,
-            'index_path': index_path.relative_to(SETTINGS.sandbox_dir).as_posix(),
-            'map_path': map_path.relative_to(SETTINGS.sandbox_dir).as_posix(),
-            'created': True,
-            'rows_added': len(chunks),
-            'total_rows': int(index.ntotal),
-            'message': 'skill metadata added to FAISS index',
-        }
+        return skill_index_result(
+            status='ok',
+            path=metadata_json_path,
+            index_path=index_path.relative_to(SETTINGS.sandbox_dir).as_posix(),
+            map_path=map_path.relative_to(SETTINGS.sandbox_dir).as_posix(),
+            created=True,
+            rows_added=len(chunks),
+            total_rows=int(index.ntotal),
+            message='skill metadata added to FAISS index',
+        )
 
     except Exception as exc:
-        return {'status': 'error', 'path': metadata_json_path, 'error': str(exc)}
+        return skill_index_result(status='error', path=metadata_json_path, error=str(exc))
 
 
 def search_skill_faiss_index(
@@ -298,62 +299,67 @@ def search_skill_faiss_index(
 ) -> dict[str, Any]:
     try:
         if not isinstance(query, str):
-            return {'status': 'error', 'error': 'query must be a string'}
+            return skill_index_result(status='error', error='query must be a string')
 
         query = query.strip()
         if not query:
-            return {'status': 'error', 'error': 'empty query'}
+            return skill_index_result(status='error', error='empty query')
 
         if not isinstance(k, int) or k <= 0:
-            return {'status': 'error', 'error': 'k must be a positive integer'}
+            return skill_index_result(status='error', error='k must be a positive integer')
 
         index_path, map_path = _index_file_paths(index_dir, index_name)
         if not index_path.exists() or not map_path.exists():
-            return {'status': 'error', 'error': 'index does not exist'}
+            return skill_index_result(status='error', error='index does not exist')
 
         vectors = embed_texts([query])
         matrix = np.asarray(vectors, dtype='float32')
         if matrix.ndim != 2 or matrix.shape[0] != 1:
-            return {'status': 'error', 'error': 'embedding backend must return exactly one query vector'}
+            return skill_index_result(status='error', error='embedding backend must return exactly one query vector')
 
         index = faiss.read_index(str(index_path))
         if matrix.shape[1] != index.d:
-            return {'status': 'error', 'error': f'query embedding dimension mismatch: index={index.d}, query={matrix.shape[1]}'}
+            return skill_index_result(
+                status='error',
+                error=f'query embedding dimension mismatch: index={index.d}, query={matrix.shape[1]}',
+            )
 
         skill_map = json.loads(map_path.read_text(encoding='utf-8'))
         if skill_map.get('chunker_version') != SKILL_INDEX_CHUNKER_VERSION:
-            return {
-                'status': 'error',
-                'error': (
+            return skill_index_result(
+                status='error',
+                error=(
                     'skill index is stale or was built with an older metadata chunker; '
                     'run rebuild_skill_faiss_index before searching'
                 ),
-                'expected_chunker_version': SKILL_INDEX_CHUNKER_VERSION,
-                'actual_chunker_version': skill_map.get('chunker_version'),
-            }
+                expected_chunker_version=SKILL_INDEX_CHUNKER_VERSION,
+                actual_chunker_version=skill_map.get('chunker_version'),
+            )
         distances, ids = index.search(matrix, k)
         by_row_id = {int(record['row_id']): record for record in skill_map.get('records', [])}
 
-        matches: list[dict[str, Any]] = []
+        matches: list[SkillIndexMatch] = []
         for row_id, distance in zip(ids[0], distances[0], strict=False):
             if row_id < 0:
                 continue
             record = by_row_id.get(int(row_id))
             if not record:
                 continue
-            matches.append({
-                'row_id': int(row_id),
-                'distance': float(distance),
-                'skill_name': record['skill_name'],
-                'source_path': record['source_path'],
-                'chunk_index': record['chunk_index'],
-                'text': record['text'],
-            })
+            matches.append(
+                SkillIndexMatch(
+                    row_id=int(row_id),
+                    distance=float(distance),
+                    skill_name=record['skill_name'],
+                    source_path=record['source_path'],
+                    chunk_index=record['chunk_index'],
+                    text=record['text'],
+                )
+            )
 
-        return {'status': 'ok', 'query': query, 'count': len(matches), 'matches': matches}
+        return skill_index_result(status='ok', query=query, count=len(matches), matches=matches)
 
     except Exception as exc:
-        return {'status': 'error', 'error': str(exc)}
+        return skill_index_result(status='error', error=str(exc))
 
 
 def rebuild_skill_faiss_index(
@@ -363,7 +369,7 @@ def rebuild_skill_faiss_index(
 ) -> dict[str, Any]:
     try:
         if not isinstance(metadata_json_paths, list) or not metadata_json_paths:
-            return {'status': 'error', 'error': 'metadata_json_paths must be a non-empty list of paths'}
+            return skill_index_result(status='error', error='metadata_json_paths must be a non-empty list of paths')
 
         all_rows: list[dict[str, Any]] = []
         all_vectors: list[list[float]] = []
@@ -373,9 +379,13 @@ def rebuild_skill_faiss_index(
         for metadata_json_path in metadata_json_paths:
             source_path = _metadata_source_path(metadata_json_path)
             if source_path.suffix.lower() != '.json':
-                return {'status': 'error', 'path': metadata_json_path, 'error': 'metadata_json_path must point to a .json file'}
+                return skill_index_result(
+                    status='error',
+                    path=metadata_json_path,
+                    error='metadata_json_path must point to a .json file',
+                )
             if not source_path.exists():
-                return {'status': 'error', 'path': metadata_json_path, 'error': 'metadata file does not exist'}
+                return skill_index_result(status='error', path=metadata_json_path, error='metadata file does not exist')
 
             raw = source_path.read_text(encoding='utf-8')
             data = json.loads(raw)
@@ -385,7 +395,11 @@ def rebuild_skill_faiss_index(
 
             vectors = embed_texts(chunks)
             if len(vectors) != len(chunks):
-                return {'status': 'error', 'path': metadata_json_path, 'error': 'embedding backend returned a different number of vectors than chunks'}
+                return skill_index_result(
+                    status='error',
+                    path=metadata_json_path,
+                    error='embedding backend returned a different number of vectors than chunks',
+                )
 
             source_hash = hashlib.sha256(raw.encode('utf-8')).hexdigest()
             source_rel = _source_rel(source_path)
@@ -410,11 +424,11 @@ def rebuild_skill_faiss_index(
             }
 
         if not all_vectors:
-            return {'status': 'error', 'error': 'no embeddable content found'}
+            return skill_index_result(status='error', error='no embeddable content found')
 
         matrix = np.asarray(all_vectors, dtype='float32')
         if matrix.ndim != 2 or matrix.shape[0] == 0:
-            return {'status': 'error', 'error': 'embedding output must be a non-empty 2D array'}
+            return skill_index_result(status='error', error='embedding output must be a non-empty 2D array')
 
         index = faiss.IndexFlatL2(int(matrix.shape[1]))
         index.add(matrix)
@@ -425,14 +439,14 @@ def rebuild_skill_faiss_index(
         with _INDEX_WRITE_LOCK:
             _atomic_write_index_and_map(index, index_path, map_path, skill_map)
 
-        return {
-            'status': 'ok',
-            'index_path': index_path.relative_to(SETTINGS.sandbox_dir).as_posix(),
-            'map_path': map_path.relative_to(SETTINGS.sandbox_dir).as_posix(),
-            'source_count': len(sources),
-            'total_rows': int(index.ntotal),
-            'message': 'skill FAISS index rebuilt',
-        }
+        return skill_index_result(
+            status='ok',
+            index_path=index_path.relative_to(SETTINGS.sandbox_dir).as_posix(),
+            map_path=map_path.relative_to(SETTINGS.sandbox_dir).as_posix(),
+            source_count=len(sources),
+            total_rows=int(index.ntotal),
+            message='skill FAISS index rebuilt',
+        )
 
     except Exception as exc:
-        return {'status': 'error', 'error': str(exc)}
+        return skill_index_result(status='error', error=str(exc))
