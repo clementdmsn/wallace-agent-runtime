@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+
 from pydantic import Field
 
 from contracts.base import ContractModel, ResultStatus
@@ -37,20 +38,24 @@ class GenericToolResult(ToolResult):
     approval_id: str | None = None
     domain: str | None = None
 
+
 class CodeSymbol(ContractModel):
     name: str | None = None
     qualified_name: str | None = None
     kind: str | None = None
     lines: list[int | None]
 
-class CodeSummaryResult(ToolResult): 
+
+class CodeSummaryResult(ToolResult):
     path: str
     content: str | None = None
+
 
 class ListCodeSymbolsResult(ToolResult):
     path: str
     symbols: list[CodeSymbol] = Field(default_factory=list)
     content: list[CodeSymbol] = Field(default_factory=list)
+
 
 class FunctionExplanationContent(ContractModel):
     qualified_name: str | None = None
@@ -68,6 +73,7 @@ class FunctionExplanationContent(ContractModel):
     nested_symbols: list[str | None] = Field(default_factory=list)
     effects: list[str] = Field(default_factory=list)
     summary: str
+
 
 class ExplainFunctionResult(ToolResult):
     path: str
