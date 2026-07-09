@@ -13,6 +13,7 @@ from typing import Any
 from urllib.parse import urljoin, urlparse
 
 from config import SETTINGS
+from contracts.tool_results import CurlResult
 
 
 MAX_CURL_BYTES = 512_000
@@ -149,14 +150,18 @@ def add_domain_to_whitelist(domain: str) -> dict[str, Any]:
         domains = load_whitelist()
         domains.add(normalized)
         save_whitelist(domains)
-        return {'status': 'ok', 'domain': normalized}
+        return curl_result(status='ok', domain=normalized)
     except Exception as exc:
-        return {'status': 'error', 'domain': domain, 'error': str(exc)}
+        return curl_result(status='error', domain=domain, error=str(exc))
 
 
 def approval_id_for(domain: str, url: str) -> str:
     digest = hashlib.sha256(url.encode('utf-8')).hexdigest()[:16]
     return f'curl:{normalize_domain(domain)}:{digest}'
+
+
+def curl_result(**fields: Any) -> dict[str, Any]:
+    return CurlResult(**fields).to_payload()
 
 
 def is_private_address(address: str) -> bool:
@@ -398,12 +403,12 @@ def fetch_once(url: str, domain: str, addresses: list[str]) -> tuple[int, str, b
 
 
 def approval_payload(domain: str, url: str) -> dict[str, Any]:
-    return {
-        'status': 'approval_required',
-        'url': url,
-        'domain': domain,
-        'approval_id': approval_id_for(domain, url),
-    }
+    return curl_result(
+        status='approval_required',
+        url=url,
+        domain=domain,
+        approval_id=approval_id_for(domain, url),
+    )
 
 
 def success_payload(original_url: str, final_url: str, content_type: str, data: bytes, byte_truncated: bool) -> dict[str, Any]:
@@ -411,14 +416,14 @@ def success_payload(original_url: str, final_url: str, content_type: str, data: 
     content_truncated = len(content) > MAX_CURL_CONTENT_CHARS
     if content_truncated:
         content = content[:MAX_CURL_CONTENT_CHARS].rstrip()
-    return {
-        'status': 'ok',
-        'url': original_url,
-        'final_url': final_url,
-        'title': title,
-        'content': content,
-        'truncated': byte_truncated or content_truncated,
-    }
+    return curl_result(
+        status='ok',
+        url=original_url,
+        final_url=final_url,
+        title=title,
+        content=content,
+        truncated=byte_truncated or content_truncated,
+    )
 
 
 def curl_url(url: str) -> dict[str, Any]:
@@ -437,16 +442,16 @@ def curl_url(url: str) -> dict[str, Any]:
             status_code, content_type, data, byte_truncated, next_url = fetch_once(validated_url, domain, addresses)
             if status_code in REDIRECT_STATUSES:
                 if not next_url:
-                    return {'status': 'error', 'url': current_url, 'error': 'redirect response missing location'}
+                    return curl_result(status='error', url=current_url, error='redirect response missing location')
                 current_url = urljoin(current_url, next_url)
                 continue
             if status_code >= 400:
-                return {'status': 'error', 'url': current_url, 'error': f'HTTP {status_code}'}
+                return curl_result(status='error', url=current_url, error=f'HTTP {status_code}')
 
             final_url = str(next_url or validated_url)
             validate_url(final_url, whitelist, resolved_hosts)
             return success_payload(original_url, final_url, content_type, data, byte_truncated)
 
-        return {'status': 'error', 'url': original_url, 'error': 'too many redirects'}
+        return curl_result(status='error', url=original_url, error='too many redirects')
     except Exception as exc:
-        return {'status': 'error', 'url': original_url, 'error': str(exc)}
+        return curl_result(status='error', url=original_url, error=str(exc))

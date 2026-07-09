@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from contracts.base import ResultStatus
 from contracts.tool_results import (
     CodeSymbol,
+    CurlResult,
     FunctionExplanationContent,
     GenericToolResult,
     ListCodeSymbolsResult,
@@ -169,4 +170,40 @@ def test_explain_function_result_allows_ambiguous_symbol_content():
         'path': 'demo.py',
         'symbol': 'duplicate',
         'content': ['First.duplicate', 'Second.duplicate'],
+    }
+
+
+def test_curl_result_serializes_success_payload():
+    result = CurlResult(
+        status=ResultStatus.OK,
+        url='https://docs.python.org/3/',
+        final_url='https://docs.python.org/3/',
+        title='Python Docs',
+        content='Library\nUseful text.',
+        truncated=False,
+    )
+
+    assert result.to_payload() == {
+        'status': 'ok',
+        'url': 'https://docs.python.org/3/',
+        'final_url': 'https://docs.python.org/3/',
+        'title': 'Python Docs',
+        'content': 'Library\nUseful text.',
+        'truncated': False,
+    }
+
+
+def test_curl_result_serializes_approval_payload():
+    result = CurlResult(
+        status=ResultStatus.APPROVAL_REQUIRED,
+        url='https://docs.python.org/3/',
+        domain='docs.python.org',
+        approval_id='curl:docs.python.org:123',
+    )
+
+    assert result.to_payload() == {
+        'status': 'approval_required',
+        'url': 'https://docs.python.org/3/',
+        'domain': 'docs.python.org',
+        'approval_id': 'curl:docs.python.org:123',
     }

@@ -81,3 +81,13 @@ class ExplainFunctionResult(ToolResult):
     content: FunctionExplanationContent | list[str] | str | None = None
     error_type: str | None = None
     repr: str | None = None
+
+
+class CurlResult(ToolResult):
+    url: str | None = None
+    final_url: str | None = None
+    domain: str | None = None
+    title: str | None = None
+    content: str | None = None
+    truncated: bool | None = None
+    approval_id: str | None = None
