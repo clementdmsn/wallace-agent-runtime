@@ -62,6 +62,7 @@ def test_create_skill_normalizes_question_shaped_triggers(monkeypatch, tmp_path)
 
     assert result['status'] == 'ok'
     assert result['metadata_path'] == 'skill_catalog/metadatas/demo_question.json'
+    assert isinstance(result['index_result'], dict)
     assert result['normalizations'][0]['field'] == 'trigger_actions'
 
 
@@ -73,6 +74,8 @@ def test_create_skill_rejects_unknown_input_names():
 
     assert result['status'] == 'error'
     assert result['error'] == 'json_payload failed skill quality validation'
+    assert isinstance(result['validation_errors'][0], dict)
+    assert isinstance(result['repair_suggestions'][0], dict)
     assert result['validation_errors'][0]['field'] == 'inputs'
     assert result['validation_errors'][0]['value']['unknown_inputs'] == ['file_path']
     assert result['repair_suggestions'][0] == {
@@ -283,6 +286,7 @@ def test_repair_skill_draft_applies_structured_metadata_repairs(monkeypatch, tmp
     repair = repair_skill_draft('demo_finalize', draft['repair_suggestions'])
     assert repair['status'] == 'ok'
     assert repair['message'] == 'skill draft repaired; call finalize_skill_draft next'
+    assert isinstance(repair['applied_repairs'][0], dict)
 
     result = finalize_skill_draft('demo_finalize', rebuild_index=False)
 

@@ -59,6 +59,8 @@ def test_summarize_and_list_code_symbols(monkeypatch, tmp_path):
     assert summary['status'] == 'ok'
     assert 'helper' in summary['content']
     assert symbols['status'] == 'ok'
+    assert isinstance(symbols['symbols'][0], dict)
+    assert isinstance(symbols['content'][0], dict)
     names = {item['name'] for item in symbols['symbols']}
     assert {'Demo', 'method', 'helper', 'duplicate', 'Other'} <= names
 
@@ -73,6 +75,7 @@ def test_explain_function_for_model_handles_exact_and_missing_symbols(monkeypatc
     missing = code_tools.explain_function_for_model('demo.py', 'missing')
 
     assert helper['status'] == 'ok'
+    assert isinstance(helper['content'], dict)
     assert helper['content']['qualified_name'] == 'helper'
     assert 'exception_path' in helper['content']['effects']
     assert exact_duplicate['status'] == 'ok'

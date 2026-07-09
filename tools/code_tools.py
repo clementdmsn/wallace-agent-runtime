@@ -4,6 +4,13 @@ import os
 from pathlib import Path
 from typing import Any
 
+from contracts.tool_results import (
+    CodeSummaryResult,
+    CodeSymbol,
+    ExplainFunctionResult,
+    FunctionExplanationContent,
+    ListCodeSymbolsResult,
+)
 from sandbox import safe_path
 from utils.code_to_sym import extract_symbols_from_file
 from utils.sym_to_md import render_markdown
@@ -11,50 +18,68 @@ from utils.sym_to_md import render_markdown
 
 # Code tools expose deterministic source inspection to the model. They should
 # prefer parsed symbols over raw file reading when answering code questions.
+def code_summary_result(**fields: Any) -> dict[str, Any]:
+    return CodeSummaryResult(**fields).to_payload()
+
+
+def list_symbols_result(**fields: Any) -> dict[str, Any]:
+    return ListCodeSymbolsResult(**fields).to_payload()
+
+
+def explain_result(**fields: Any) -> dict[str, Any]:
+    return ExplainFunctionResult(**fields).to_payload()
+
+
 def summarize_code_file(path: str) -> dict[str, Any]:
     try:
         full = safe_path(path)
         if not full.exists():
-            return {'status': 'error', 'path': path, 'error': 'file does not exist'}
+            return code_summary_result(status='error', path=path, error='file does not exist')
         if full.is_dir():
-            return {'status': 'error', 'path': path, 'error': 'path is a directory'}
+            return code_summary_result(status='error', path=path, error='path is a directory')
 
         sym = extract_symbols_from_file(str(full), mode='summary')
         content = render_markdown(sym)
-        return {'status': 'ok', 'path': path, 'content': content}
+        return code_summary_result(status='ok', path=path, content=content)
 
     except Exception as exc:
-        return {
-            'status': 'error',
-            'path': path,
-            'error': str(exc),
-            'content': f'cwd: {os.getcwd()}, path: {path}, resolved_path: {Path(path).resolve()}',
-        }
+        return code_summary_result(
+            status='error',
+            path=path,
+            error=str(exc),
+            content=f'cwd: {os.getcwd()}, path: {path}, resolved_path: {Path(path).resolve()}',
+        )
 
 
 def list_code_symbols(path: str) -> dict[str, Any]:
     try:
         full = safe_path(path)
         if not full.exists():
-            return {'status': 'error', 'path': path, 'error': 'file does not exist'}
+            return list_symbols_result(status='error', path=path, error='file does not exist')
         if full.is_dir():
-            return {'status': 'error', 'path': path, 'error': 'path is a directory'}
+            return list_symbols_result(status='error', path=path, error='path is a directory')
 
         doc = extract_symbols_from_file(str(full), mode='index')
-        symbols: list[dict[str, Any]] = []
+        symbols: list[CodeSymbol] = []
         for sym in doc.get('symbols', []):
-            symbols.append({
-                'name': sym.get('name'),
-                'qualified_name': sym.get('qualified_name'),
-                'kind': sym.get('kind'),
-                'lines': [sym.get('lineno'), sym.get('end_lineno')],
-            })
+            symbols.append(
+                CodeSymbol(
+                    name=sym.get('name'),
+                    qualified_name=sym.get('qualified_name'),
+                    kind=sym.get('kind'),
+                    lines=[sym.get('lineno'), sym.get('end_lineno')],
+                )
+            )
 
-        return {'status': 'ok', 'path': path, 'symbols': symbols, 'content': symbols}
+        return list_symbols_result(status='ok', path=path, symbols=symbols, content=symbols)
     except SyntaxError as exc:
-        return {'status': 'error', 'path': path, 'error': f'python syntax error at line {exc.lineno}: {exc.msg}'}
+        return list_symbols_result(
+            status='error',
+            path=path,
+            error=f'python syntax error at line {exc.lineno}: {exc.msg}',
+        )
     except Exception as exc:
-        return {'status': 'error', 'path': path, 'error': str(exc)}
+        return list_symbols_result(status='error', path=path, error=str(exc))
 
 
 def _stringify_items(items: list[Any], key_candidates: tuple[str, ...] = ('name', 'expr', 'target')) -> list[str]:
@@ -80,9 +105,9 @@ def explain_function_for_model(path: str, symbol: str) -> dict[str, Any]:
     try:
         full = safe_path(path)
         if not full.exists():
-            return {'status': 'error', 'path': path, 'symbol': symbol, 'error': 'file does not exist'}
+            return explain_result(status='error', path=path, symbol=symbol, error='file does not exist')
         if full.is_dir():
-            return {'status': 'error', 'path': path, 'symbol': symbol, 'error': 'path is a directory'}
+            return explain_result(status='error', path=path, symbol=symbol, error='path is a directory')
 
         doc = extract_symbols_from_file(str(full), mode='summary')
         symbols = doc.get('symbols', [])
@@ -104,20 +129,15 @@ def explain_function_for_model(path: str, symbol: str) -> dict[str, Any]:
         elif len(name_matches) == 1:
             target = name_matches[0]
         elif len(name_matches) > 1:
-            return {
-                'status': 'error',
-                'path': path,
-                'symbol': symbol,
-                'error': 'symbol is ambiguous',
-                'content': [m.get('qualified_name') or m.get('name') for m in name_matches],
-            }
+            return explain_result(
+                status='error',
+                path=path,
+                symbol=symbol,
+                error='symbol is ambiguous',
+                content=[m.get('qualified_name') or m.get('name') for m in name_matches],
+            )
         else:
-            return {
-                'status': 'error',
-                'path': path,
-                'symbol': symbol,
-                'error': 'symbol not found',
-            }
+            return explain_result(status='error', path=path, symbol=symbol, error='symbol not found')
 
         calls = _stringify_items(target.get('calls', []), ('name', 'expr', 'target'))
         returns = _stringify_items(target.get('returns', []), ('expr', 'name', 'target'))
@@ -150,42 +170,42 @@ def explain_function_for_model(path: str, symbol: str) -> dict[str, Any]:
         if not summary_parts:
             summary_parts.append('has no obvious side effects or calls')
 
-        return {
-            'status': 'ok',
-            'path': path,
-            'symbol': symbol,
-            'content': {
-                'qualified_name': target.get('qualified_name') or target.get('name'),
-                'kind': target.get('kind'),
-                'lines': [target.get('lineno'), target.get('end_lineno')],
-                'docstring': target.get('docstring'),
-                'params': params,
-                'decorators': decorators,
-                'calls': calls,
-                'returns': returns,
-                'raises': raises_,
-                'writes': writes,
-                'reads': reads,
-                'instance_attributes': instance_attributes,
-                'nested_symbols': nested_symbols,
-                'effects': effects,
-                'summary': '; '.join(summary_parts),
-            },
-        }
+        return explain_result(
+            status='ok',
+            path=path,
+            symbol=symbol,
+            content=FunctionExplanationContent(
+                qualified_name=target.get('qualified_name') or target.get('name'),
+                kind=target.get('kind'),
+                lines=[target.get('lineno'), target.get('end_lineno')],
+                docstring=target.get('docstring'),
+                params=params,
+                decorators=decorators,
+                calls=calls,
+                returns=returns,
+                raises=raises_,
+                writes=writes,
+                reads=reads,
+                instance_attributes=instance_attributes,
+                nested_symbols=nested_symbols,
+                effects=effects,
+                summary='; '.join(summary_parts),
+            ),
+        )
 
     except SyntaxError as exc:
-        return {
-            'status': 'error',
-            'path': path,
-            'symbol': symbol,
-            'error': f'python syntax error at line {exc.lineno}: {exc.msg}',
-        }
+        return explain_result(
+            status='error',
+            path=path,
+            symbol=symbol,
+            error=f'python syntax error at line {exc.lineno}: {exc.msg}',
+        )
     except Exception as exc:
-        return {
-            'status': 'error',
-            'path': path,
-            'symbol': symbol,
-            'error': str(exc),
-            'error_type': type(exc).__name__,
-            'repr': repr(exc),
-        }
+        return explain_result(
+            status='error',
+            path=path,
+            symbol=symbol,
+            error=str(exc),
+            error_type=type(exc).__name__,
+            repr=repr(exc),
+        )
