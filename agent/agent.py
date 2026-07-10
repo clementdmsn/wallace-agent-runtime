@@ -18,7 +18,7 @@ from agent.agent_skill_policy import (
 from agent.agent_tool_execution import execute_tool_call
 from agent.model_streaming import consume_model_stream
 from agent.run_trace import RunTrace
-from contracts.events import PendingApproval
+from contracts.events import PendingApproval, SkillPolicyEvent, SkillSelectionEvent
 from tools.tools import OPENAI_TOOLS
 from config import SETTINGS
 from skills.skills import record_skill_event, request_skill_for_intent
@@ -388,21 +388,25 @@ class Agent:
             result = request_skill_for_intent(selection_text)
         except Exception as exc:
             with self.lock:
-                self.tool_events.append({
-                    'kind': 'skill_selection',
-                    'status': 'error',
-                    'error': str(exc),
-                })
+                self._append_skill_selection_event(
+                    SkillSelectionEvent(
+                        kind='skill_selection',
+                        status='error',
+                        error=str(exc),
+                    )
+                )
                 self._trace('skill_selection_failed', error=str(exc))
             return None
 
         with self.lock:
-            self.tool_events.append({
-                'kind': 'skill_selection',
-                'status': result.get('status'),
-                'skill_name': result.get('skill_name'),
-                'selection': result.get('selection'),
-            })
+            self._append_skill_selection_event(
+                SkillSelectionEvent(
+                    kind='skill_selection',
+                    status=str(result.get('status', 'unknown')),
+                    skill_name=result.get('skill_name'),
+                    selection=result.get('selection'),
+                )
+            )
             self._trace(
                 'skill_selection_finished',
                 status=result.get('status'),
@@ -413,6 +417,12 @@ class Agent:
         if result.get('status') != 'ok' or not result.get('skill_name'):
             return None
         return result
+
+    def _append_skill_selection_event(self, event: SkillSelectionEvent) -> None:
+        self.tool_events.append(event.to_payload())
+
+    def _append_skill_policy_event(self, event: SkillPolicyEvent) -> None:
+        self.tool_events.append(event.to_payload())
 
     def _configure_request_skill(
         self,
@@ -490,13 +500,15 @@ class Agent:
                     'Do not cite OWASP from memory. Do not provide a final answer until the required tool succeeds.'
                 ),
             })
-            self.tool_events.append({
-                'kind': 'skill_policy',
-                'status': 'error',
-                'error': policy_error.get('error'),
-                'message': policy_error.get('message'),
-                'required_tool': policy_error.get('required_tool'),
-            })
+            self._append_skill_policy_event(
+                SkillPolicyEvent(
+                    kind='skill_policy',
+                    status='error',
+                    error=policy_error.get('error'),
+                    message=policy_error.get('message'),
+                    required_tool=policy_error.get('required_tool'),
+                )
+            )
             self._trace(
                 'skill_policy_blocked_final_response',
                 error=policy_error.get('error'),
