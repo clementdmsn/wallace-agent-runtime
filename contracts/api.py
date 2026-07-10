@@ -23,6 +23,9 @@ class RuntimeStateResponse(ContractModel):
     last_error: str = ''
     pending_approval: PendingApproval | None = None
 
+    def to_payload(self) -> dict[str, Any]:
+        return self.model_dump()
+
 
 class ApiOkResponse(ContractModel):
     ok: bool = True

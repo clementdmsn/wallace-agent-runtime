@@ -31,9 +31,11 @@ def test_runtime_state_response_uses_safe_defaults():
         'messages': [],
         'tool_events': [],
         'runtime_metrics': {},
+        'active_skill_name': None,
         'active_skill_policy': {},
         'is_generating': False,
         'last_error': '',
+        'pending_approval': None,
     }
 
 
