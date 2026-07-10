@@ -149,7 +149,7 @@ def create_app(
             runtime_metrics = runtime.agent.metrics.snapshot()
             last_error = runtime.agent.last_error
             is_generating = runtime.agent.is_generating
-            pending_approval = dict(runtime.agent.pending_approval) if runtime.agent.pending_approval else None
+            pending_approval = runtime.agent.snapshot_pending_approval()
             active_skill_name = runtime.agent.active_skill_name
             active_skill_policy = dict(runtime.agent.active_skill_policy or {})
 

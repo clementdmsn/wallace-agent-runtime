@@ -18,6 +18,7 @@ from agent.agent_skill_policy import (
 from agent.agent_tool_execution import execute_tool_call
 from agent.model_streaming import consume_model_stream
 from agent.run_trace import RunTrace
+from contracts.events import PendingApproval
 from tools.tools import OPENAI_TOOLS
 from config import SETTINGS
 from skills.skills import record_skill_event, request_skill_for_intent
@@ -115,7 +116,25 @@ class Agent:
 
     def snapshot_pending_approval(self) -> dict[str, Any] | None:
         with self.lock:
-            return dict(self.pending_approval) if self.pending_approval else None
+            if not self.pending_approval:
+                return None
+            return PendingApproval.model_validate(self.pending_approval).to_payload()
+
+    def _build_pending_approval_payload(
+        self,
+        tool_name: str,
+        args: dict[str, Any],
+        result: dict[str, Any],
+        call_id: str = '',
+    ) -> dict[str, Any]:
+        return PendingApproval(
+            tool=tool_name,
+            call_id=call_id,
+            args=dict(args),
+            approval_id=result.get('approval_id'),
+            domain=result.get('domain'),
+            url=result.get('url') or args.get('url'),
+        ).to_payload()
 
     def set_pending_approval(
         self,
@@ -125,14 +144,7 @@ class Agent:
         call_id: str = '',
     ) -> None:
         with self.lock:
-            self.pending_approval = {
-                'tool': tool_name,
-                'call_id': call_id,
-                'args': dict(args),
-                'approval_id': result.get('approval_id'),
-                'domain': result.get('domain'),
-                'url': result.get('url') or args.get('url'),
-            }
+            self.pending_approval = self._build_pending_approval_payload(tool_name, args, result, call_id)
 
     def replace_pending_approval(
         self,
@@ -147,14 +159,7 @@ class Agent:
                 return False
             if previous_approval_id is not None and self.pending_approval.get('approval_id') != previous_approval_id:
                 return False
-            self.pending_approval = {
-                'tool': tool_name,
-                'call_id': call_id,
-                'args': dict(args),
-                'approval_id': result.get('approval_id'),
-                'domain': result.get('domain'),
-                'url': result.get('url') or args.get('url'),
-            }
+            self.pending_approval = self._build_pending_approval_payload(tool_name, args, result, call_id)
             self.last_error = 'Waiting for user approval.'
             return True
 
@@ -164,7 +169,7 @@ class Agent:
                 return None
             if approval_id is not None and self.pending_approval.get('approval_id') != approval_id:
                 return None
-            pending = dict(self.pending_approval)
+            pending = PendingApproval.model_validate(self.pending_approval).to_payload()
             self.pending_approval = None
             if self.last_error == 'Waiting for user approval.':
                 self.last_error = ''

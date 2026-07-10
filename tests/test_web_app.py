@@ -154,6 +154,8 @@ def test_state_includes_pending_curl_approval():
     assert response.status_code == 200
     assert response.get_json()['pending_approval'] == {
         'tool': 'curl_url',
+        'call_id': '',
+        'args': {},
         'approval_id': 'curl:docs.python.org:123',
         'domain': 'docs.python.org',
         'url': 'https://docs.python.org/3/',

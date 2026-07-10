@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from contracts.events import ToolEvent
+from contracts.events import PendingApproval, ToolEvent
 
 
 def test_tool_event_requires_kind():
@@ -55,5 +55,75 @@ def test_tool_event_args_default_is_not_shared():
     second = ToolEvent(kind='tool')
 
     first.args['path'] = 'notes.txt'
+
+    assert second.args == {}
+
+
+def test_pending_approval_requires_core_fields():
+    with pytest.raises(ValidationError):
+        PendingApproval(tool='curl_url', approval_id='curl:docs.python.org:123')
+
+
+def test_pending_approval_uses_safe_defaults():
+    approval = PendingApproval(
+        tool='curl_url',
+        approval_id='curl:docs.python.org:123',
+        domain='docs.python.org',
+    )
+
+    assert approval.call_id == ''
+    assert approval.args == {}
+    assert approval.to_payload() == {
+        'tool': 'curl_url',
+        'call_id': '',
+        'args': {},
+        'approval_id': 'curl:docs.python.org:123',
+        'domain': 'docs.python.org',
+    }
+
+
+def test_pending_approval_serializes_known_fields():
+    approval = PendingApproval(
+        tool='curl_url',
+        call_id='call-1',
+        args={'url': 'https://docs.python.org/3/'},
+        approval_id='curl:docs.python.org:123',
+        domain='docs.python.org',
+        url='https://docs.python.org/3/',
+    )
+
+    assert approval.to_payload() == {
+        'tool': 'curl_url',
+        'call_id': 'call-1',
+        'args': {'url': 'https://docs.python.org/3/'},
+        'approval_id': 'curl:docs.python.org:123',
+        'domain': 'docs.python.org',
+        'url': 'https://docs.python.org/3/',
+    }
+
+
+def test_pending_approval_rejects_unknown_fields():
+    with pytest.raises(ValidationError):
+        PendingApproval(
+            tool='curl_url',
+            approval_id='curl:docs.python.org:123',
+            domain='docs.python.org',
+            unexpected='value',
+        )
+
+
+def test_pending_approval_args_default_is_not_shared():
+    first = PendingApproval(
+        tool='curl_url',
+        approval_id='curl:docs.python.org:123',
+        domain='docs.python.org',
+    )
+    second = PendingApproval(
+        tool='curl_url',
+        approval_id='curl:docs.python.org:456',
+        domain='docs.python.org',
+    )
+
+    first.args['url'] = 'https://docs.python.org/3/'
 
     assert second.args == {}
