@@ -18,6 +18,7 @@ from agent.agent_skill_policy import (
 from agent.agent_tool_execution import execute_tool_call
 from agent.model_streaming import consume_model_stream
 from agent.run_trace import RunTrace
+from contracts.events import PendingApproval, SkillPolicyEvent, SkillSelectionEvent
 from tools.tools import OPENAI_TOOLS
 from config import SETTINGS
 from skills.skills import record_skill_event, request_skill_for_intent
@@ -115,7 +116,25 @@ class Agent:
 
     def snapshot_pending_approval(self) -> dict[str, Any] | None:
         with self.lock:
-            return dict(self.pending_approval) if self.pending_approval else None
+            if not self.pending_approval:
+                return None
+            return PendingApproval.model_validate(self.pending_approval).to_payload()
+
+    def _build_pending_approval_payload(
+        self,
+        tool_name: str,
+        args: dict[str, Any],
+        result: dict[str, Any],
+        call_id: str = '',
+    ) -> dict[str, Any]:
+        return PendingApproval(
+            tool=tool_name,
+            call_id=call_id,
+            args=dict(args),
+            approval_id=result.get('approval_id'),
+            domain=result.get('domain'),
+            url=result.get('url') or args.get('url'),
+        ).to_payload()
 
     def set_pending_approval(
         self,
@@ -125,14 +144,7 @@ class Agent:
         call_id: str = '',
     ) -> None:
         with self.lock:
-            self.pending_approval = {
-                'tool': tool_name,
-                'call_id': call_id,
-                'args': dict(args),
-                'approval_id': result.get('approval_id'),
-                'domain': result.get('domain'),
-                'url': result.get('url') or args.get('url'),
-            }
+            self.pending_approval = self._build_pending_approval_payload(tool_name, args, result, call_id)
 
     def replace_pending_approval(
         self,
@@ -147,14 +159,7 @@ class Agent:
                 return False
             if previous_approval_id is not None and self.pending_approval.get('approval_id') != previous_approval_id:
                 return False
-            self.pending_approval = {
-                'tool': tool_name,
-                'call_id': call_id,
-                'args': dict(args),
-                'approval_id': result.get('approval_id'),
-                'domain': result.get('domain'),
-                'url': result.get('url') or args.get('url'),
-            }
+            self.pending_approval = self._build_pending_approval_payload(tool_name, args, result, call_id)
             self.last_error = 'Waiting for user approval.'
             return True
 
@@ -164,7 +169,7 @@ class Agent:
                 return None
             if approval_id is not None and self.pending_approval.get('approval_id') != approval_id:
                 return None
-            pending = dict(self.pending_approval)
+            pending = PendingApproval.model_validate(self.pending_approval).to_payload()
             self.pending_approval = None
             if self.last_error == 'Waiting for user approval.':
                 self.last_error = ''
@@ -383,21 +388,25 @@ class Agent:
             result = request_skill_for_intent(selection_text)
         except Exception as exc:
             with self.lock:
-                self.tool_events.append({
-                    'kind': 'skill_selection',
-                    'status': 'error',
-                    'error': str(exc),
-                })
+                self._append_skill_selection_event(
+                    SkillSelectionEvent(
+                        kind='skill_selection',
+                        status='error',
+                        error=str(exc),
+                    )
+                )
                 self._trace('skill_selection_failed', error=str(exc))
             return None
 
         with self.lock:
-            self.tool_events.append({
-                'kind': 'skill_selection',
-                'status': result.get('status'),
-                'skill_name': result.get('skill_name'),
-                'selection': result.get('selection'),
-            })
+            self._append_skill_selection_event(
+                SkillSelectionEvent(
+                    kind='skill_selection',
+                    status=str(result.get('status', 'unknown')),
+                    skill_name=result.get('skill_name'),
+                    selection=result.get('selection'),
+                )
+            )
             self._trace(
                 'skill_selection_finished',
                 status=result.get('status'),
@@ -408,6 +417,12 @@ class Agent:
         if result.get('status') != 'ok' or not result.get('skill_name'):
             return None
         return result
+
+    def _append_skill_selection_event(self, event: SkillSelectionEvent) -> None:
+        self.tool_events.append(event.to_payload())
+
+    def _append_skill_policy_event(self, event: SkillPolicyEvent) -> None:
+        self.tool_events.append(event.to_payload())
 
     def _configure_request_skill(
         self,
@@ -485,13 +500,15 @@ class Agent:
                     'Do not cite OWASP from memory. Do not provide a final answer until the required tool succeeds.'
                 ),
             })
-            self.tool_events.append({
-                'kind': 'skill_policy',
-                'status': 'error',
-                'error': policy_error.get('error'),
-                'message': policy_error.get('message'),
-                'required_tool': policy_error.get('required_tool'),
-            })
+            self._append_skill_policy_event(
+                SkillPolicyEvent(
+                    kind='skill_policy',
+                    status='error',
+                    error=policy_error.get('error'),
+                    message=policy_error.get('message'),
+                    required_tool=policy_error.get('required_tool'),
+                )
+            )
             self._trace(
                 'skill_policy_blocked_final_response',
                 error=policy_error.get('error'),

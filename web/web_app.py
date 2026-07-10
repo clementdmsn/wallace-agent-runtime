@@ -9,6 +9,7 @@ from flask import Flask, jsonify, request, send_from_directory
 from agent.agent import Agent
 from agent.agent_tool_execution import append_resolved_tool_result
 from config import SETTINGS, env_bool
+from contracts.api import RuntimeStateResponse
 from tools.curl_tool import add_domain_to_whitelist
 from tools.tools import TOOLS
 from web.metrics_routes import register_metrics_routes
@@ -149,22 +150,22 @@ def create_app(
             runtime_metrics = runtime.agent.metrics.snapshot()
             last_error = runtime.agent.last_error
             is_generating = runtime.agent.is_generating
-            pending_approval = dict(runtime.agent.pending_approval) if runtime.agent.pending_approval else None
+            pending_approval = runtime.agent.snapshot_pending_approval()
             active_skill_name = runtime.agent.active_skill_name
             active_skill_policy = dict(runtime.agent.active_skill_policy or {})
 
-        return jsonify(
-            {
-                "messages": visible_messages(messages),
-                "tool_events": serialize_tool_events(tool_events),
-                "runtime_metrics": runtime_metrics,
-                "active_skill_name": active_skill_name,
-                "active_skill_policy": active_skill_policy,
-                "is_generating": is_generating,
-                "last_error": last_error,
-                "pending_approval": pending_approval,
-            }
+        state = RuntimeStateResponse(
+            messages=visible_messages(messages),
+            tool_events=serialize_tool_events(tool_events),
+            runtime_metrics=runtime_metrics,
+            active_skill_name=active_skill_name,
+            active_skill_policy=active_skill_policy,
+            is_generating=is_generating,
+            last_error=last_error,
+            pending_approval=pending_approval,
         )
+
+        return jsonify(state.to_payload())
 
     @app.post("/api/messages")
     def post_message() -> Any:

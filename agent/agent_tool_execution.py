@@ -10,6 +10,7 @@ from agent.agent_skill_policy import (
     remember_verified_symbols,
     validate_tool_call_against_skill_policy,
 )
+from contracts.events import ToolEvent
 from skills.stats import record_skill_event
 from tools.tools import TOOLS
 
@@ -202,13 +203,13 @@ def run_tool(agent: Any, call_name: str, raw_args: str) -> ToolExecutionResult:
 
 
 def tool_event(parsed: ParsedToolCall, execution: ToolExecutionResult) -> dict[str, Any]:
-    return {
-        'id': parsed.call_id,
-        'kind': execution.kind,
-        execution.kind: parsed.name,
-        'args': execution.args,
-        'result': execution.result,
-    }
+    return ToolEvent(
+        id=parsed.call_id,
+        kind=execution.kind,
+        tool=parsed.name if execution.kind == 'tool' else None,
+        args=execution.args,
+        result=execution.result,
+    ).to_payload()
 
 
 def hidden_tool_message(parsed: ParsedToolCall, execution: ToolExecutionResult) -> dict[str, Any]:
