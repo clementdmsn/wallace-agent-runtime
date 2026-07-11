@@ -148,6 +148,23 @@ def test_state_includes_active_skill_policy():
     ]
 
 
+def test_state_returns_controlled_error_for_invalid_runtime_events(caplog):
+    client = web_app.app.test_client()
+    seed_agent_state(
+        tool_events=[{'kind': 'skill_policy', 'status': 'ok'}],
+    )
+
+    with caplog.at_level('ERROR', logger='web.web_app'):
+        response = client.get('/api/state')
+
+    assert response.status_code == 500
+    assert response.get_json() == {
+        'ok': False,
+        'error': 'Runtime state failed contract validation.',
+    }
+    assert 'runtime state contract validation failed' in caplog.text
+
+
 def test_state_includes_pending_curl_approval():
     client = web_app.app.test_client()
     with web_app.agent.lock:

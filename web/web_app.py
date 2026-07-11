@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import threading
+import logging
 from pathlib import Path
 from typing import Any
 
 from flask import Flask, jsonify, request, send_from_directory
+from pydantic import ValidationError
 
 from agent.agent import Agent
 from agent.agent_tool_execution import append_resolved_tool_result
 from config import SETTINGS, env_bool
-from contracts.api import RuntimeStateResponse
+from contracts.api import ApiErrorResponse, RuntimeStateResponse
 from tools.curl_tool import add_domain_to_whitelist
 from tools.tools import TOOLS
 from web.metrics_routes import register_metrics_routes
@@ -17,6 +19,7 @@ from web.metrics_routes import register_metrics_routes
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR
+logger = logging.getLogger(__name__)
 
 
 class WallaceRuntime:
@@ -156,16 +159,21 @@ def create_app(
             active_skill_name = runtime.agent.active_skill_name
             active_skill_policy = dict(runtime.agent.active_skill_policy or {})
 
-        state = RuntimeStateResponse(
-            messages=visible_messages(messages),
-            tool_events=serialize_tool_events(tool_events),
-            runtime_metrics=runtime_metrics,
-            active_skill_name=active_skill_name,
-            active_skill_policy=active_skill_policy,
-            is_generating=is_generating,
-            last_error=last_error,
-            pending_approval=pending_approval,
-        )
+        try:
+            state = RuntimeStateResponse(
+                messages=visible_messages(messages),
+                tool_events=serialize_tool_events(tool_events),
+                runtime_metrics=runtime_metrics,
+                active_skill_name=active_skill_name,
+                active_skill_policy=active_skill_policy,
+                is_generating=is_generating,
+                last_error=last_error,
+                pending_approval=pending_approval,
+            )
+        except ValidationError:
+            logger.exception("runtime state contract validation failed")
+            error = ApiErrorResponse(error="Runtime state failed contract validation.")
+            return jsonify(error.to_payload()), 500
 
         return jsonify(state.to_payload())
 
