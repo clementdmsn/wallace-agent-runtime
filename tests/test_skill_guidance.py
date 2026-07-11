@@ -40,10 +40,12 @@ def test_whole_file_guidance_for_code_path_without_symbol():
 
 
 def test_specific_function_guidance_for_explicit_symbol():
+    arguments = {'path': 'auth.py'}
+
     guidance = build_execution_guidance(
         make_skill(),
         'Explain function login in auth.py',
-        {'path': 'auth.py'},
+        arguments,
     )
 
     assert guidance['resolved_task_type'] == 'specific_function_explanation'
@@ -54,6 +56,7 @@ def test_specific_function_guidance_for_explicit_symbol():
         'path': 'auth.py',
         'symbol': 'login',
     }
+    assert arguments == {'path': 'auth.py'}
 
 
 def test_merge_and_sanitize_args_removes_guessed_symbol():
