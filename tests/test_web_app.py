@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from agent.agent import Agent
+from agent.runtime import AgentRuntime
 from web import web_app
 from web.metrics_routes import measure_baseline
 from tools.tool_registry import Tool
@@ -308,7 +310,7 @@ def test_baseline_metrics_rejects_while_generation_is_active():
 
 
 def test_baseline_metrics_reserves_runtime_during_measurement():
-    runtime = web_app.WallaceRuntime(web_app.Agent())
+    runtime = AgentRuntime(Agent())
     overlap_attempts = []
 
     class OverlapStream:
@@ -328,7 +330,7 @@ def test_baseline_metrics_reserves_runtime_during_measurement():
 
 
 def test_measure_baseline_records_content_ttft():
-    agent = web_app.Agent()
+    agent = Agent()
     agent.client = FakeClient([Chunk(Delta(content='O'))])
 
     result = measure_baseline(agent)
@@ -343,7 +345,7 @@ def test_measure_baseline_records_content_ttft():
 
 
 def test_measure_baseline_records_tool_call_ttft():
-    agent = web_app.Agent()
+    agent = Agent()
     agent.client = FakeClient([Chunk(Delta(tool_calls=[object()]))])
 
     result = measure_baseline(agent)
@@ -353,7 +355,7 @@ def test_measure_baseline_records_tool_call_ttft():
 
 
 def test_baseline_metrics_route_records_errors():
-    runtime = web_app.WallaceRuntime(web_app.Agent())
+    runtime = AgentRuntime(Agent())
 
     class RaisingCompletions:
         def create(self, **kwargs):
@@ -372,7 +374,7 @@ def test_baseline_metrics_route_records_errors():
 
 
 def test_create_app_can_use_isolated_runtime():
-    isolated_runtime = web_app.WallaceRuntime(web_app.Agent())
+    isolated_runtime = AgentRuntime(Agent())
     started = []
     isolated_app = web_app.create_app(
         isolated_runtime,
@@ -388,7 +390,7 @@ def test_create_app_can_use_isolated_runtime():
 
 
 def test_runtime_resume_with_tool_result_clears_pending_after_reserving_generation():
-    runtime = web_app.WallaceRuntime(web_app.Agent())
+    runtime = AgentRuntime(Agent())
     pending = {
         'tool': 'curl_url',
         'call_id': 'call-1',
@@ -427,7 +429,7 @@ def test_runtime_resume_with_tool_result_clears_pending_after_reserving_generati
 
 
 def test_curl_approval_approve_persists_domain_and_resumes(monkeypatch):
-    runtime = web_app.WallaceRuntime(web_app.Agent())
+    runtime = AgentRuntime(Agent())
     pending = {
         'tool': 'curl_url',
         'call_id': 'call-1',
@@ -477,7 +479,7 @@ def test_curl_approval_approve_persists_domain_and_resumes(monkeypatch):
 
 
 def test_curl_approval_updates_pending_for_redirect_domain_without_resuming(monkeypatch):
-    runtime = web_app.WallaceRuntime(web_app.Agent())
+    runtime = AgentRuntime(Agent())
     pending = {
         'tool': 'curl_url',
         'call_id': 'call-1',
@@ -527,7 +529,7 @@ def test_curl_approval_updates_pending_for_redirect_domain_without_resuming(monk
 
 
 def test_curl_approval_rejects_invalid_redirect_approval_result(monkeypatch, caplog):
-    runtime = web_app.WallaceRuntime(web_app.Agent())
+    runtime = AgentRuntime(Agent())
     pending = {
         'tool': 'curl_url',
         'call_id': 'call-1',
@@ -567,7 +569,7 @@ def test_curl_approval_rejects_invalid_redirect_approval_result(monkeypatch, cap
 
 
 def test_curl_approval_deny_appends_denial_and_resumes():
-    runtime = web_app.WallaceRuntime(web_app.Agent())
+    runtime = AgentRuntime(Agent())
     pending = {
         'tool': 'curl_url',
         'call_id': 'call-1',
@@ -607,7 +609,7 @@ def test_curl_approval_deny_appends_denial_and_resumes():
 
 
 def test_curl_approval_keeps_pending_when_persist_fails(monkeypatch):
-    runtime = web_app.WallaceRuntime(web_app.Agent())
+    runtime = AgentRuntime(Agent())
     pending = {
         'tool': 'curl_url',
         'call_id': 'call-1',
@@ -631,7 +633,7 @@ def test_curl_approval_keeps_pending_when_persist_fails(monkeypatch):
 
 
 def test_curl_approval_rejects_missing_pending_approval():
-    runtime = web_app.WallaceRuntime(web_app.Agent())
+    runtime = AgentRuntime(Agent())
     client = web_app.create_app(runtime).test_client()
 
     response = client.post(
@@ -643,7 +645,7 @@ def test_curl_approval_rejects_missing_pending_approval():
 
 
 def test_curl_approval_keeps_pending_when_resume_is_busy(monkeypatch):
-    runtime = web_app.WallaceRuntime(web_app.Agent())
+    runtime = AgentRuntime(Agent())
     pending = {
         'tool': 'curl_url',
         'call_id': 'call-1',
