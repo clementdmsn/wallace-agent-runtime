@@ -26,6 +26,165 @@ def security_review_skill() -> Skill:
     )
 
 
+def code_explainer_skill() -> Skill:
+    return Skill(
+        name='skill_explain_file',
+        description='Explain a code file.',
+        implementation_name='skill_explain_file',
+        parameters={
+            'type': 'object',
+            'properties': {'path': {'type': 'string'}},
+            'required': ['path'],
+            'additionalProperties': False,
+        },
+        category='code',
+        tags=frozenset({'explain', 'python'}),
+        supported_actions=frozenset({'summarize'}),
+        supported_domains=frozenset({'code'}),
+        supported_filetypes=frozenset({'py'}),
+        required_args=frozenset({'path'}),
+        default_score=0.5,
+    )
+
+
+def test_choose_skill_selected_payload_golden(monkeypatch):
+    skill = code_explainer_skill()
+    monkeypatch.setattr(selection, 'retrieve_skill_candidates', lambda *args, **kwargs: [(skill, {'distance': 0.25})])
+    monkeypatch.setattr(selection, 'get_skill_score_bonus', lambda name: 0.0)
+    monkeypatch.setattr(selection, 'record_skill_event', lambda name, event: None)
+
+    result = selection.choose_skill_for_intent(
+        {'skill_explain_file': skill},
+        'Explain app.py',
+        {'path': 'app.py'},
+    )
+
+    assert result == {
+        'status': 'ok',
+        'skill_name': 'skill_explain_file',
+        'validation': {
+            'valid': True,
+            'score': 20.0,
+            'reasons': [
+                'tag_overlap=2',
+                'action_match',
+                'domain_match',
+                'filetype_match',
+                'required_args_present',
+            ],
+            'intent': {
+                'text': 'explain app.py',
+                'tokens': ['app.py', 'explain', 'python'],
+                'args': {'path': 'app.py'},
+                'action': 'summarize',
+                'filetype': 'py',
+                'domain': 'code',
+                'speech_act': 'command',
+            },
+        },
+        'distance': 0.25,
+        'forced': False,
+        'candidates': [
+            {
+                'skill_name': 'skill_explain_file',
+                'score': 20.0,
+                'distance': 0.25,
+                'forced': False,
+            }
+        ],
+        'rejected_candidates': [],
+    }
+
+
+def test_choose_skill_rejected_payload_golden(monkeypatch):
+    skill = Skill(
+        name='create_new_skill',
+        description='Create a new reusable skill.',
+        implementation_name='create_new_skill',
+        parameters={'type': 'object', 'properties': {}, 'required': []},
+        category='skills',
+        tags=frozenset({'create', 'skill', 'reusable'}),
+        supported_actions=frozenset({'create'}),
+        supported_domains=frozenset({'skills'}),
+        default_score=0.9,
+    )
+    monkeypatch.setattr(selection, 'retrieve_skill_candidates', lambda *args, **kwargs: [(skill, {'distance': 0.25})])
+
+    result = selection.choose_skill_for_intent(
+        {'create_new_skill': skill},
+        'create a file named aaa',
+        {},
+    )
+
+    assert result == {
+        'status': 'ok',
+        'skill_name': None,
+        'selection_reason': 'no skill candidates passed validation',
+        'message': 'No relevant skill is available. Improvise a short procedure with normal tool discipline.',
+        'forced': False,
+        'candidates': [],
+        'rejected_candidates': [
+            {
+                'skill_name': 'create_new_skill',
+                'rejection_reason': 'missing explicit skill-authoring intent',
+                'distance': 0.25,
+            }
+        ],
+    }
+
+
+def test_choose_skill_below_threshold_payload_golden(monkeypatch):
+    skill = code_explainer_skill()
+    monkeypatch.setattr(selection, 'retrieve_skill_candidates', lambda *args, **kwargs: [(skill, {'distance': 0.25})])
+    monkeypatch.setattr(selection, 'get_skill_score_bonus', lambda name: 0.0)
+
+    result = selection.choose_skill_for_intent(
+        {'skill_explain_file': skill},
+        'Explain app.py',
+        {'path': 'app.py'},
+        threshold=100.0,
+    )
+
+    assert result == {
+        'status': 'ok',
+        'skill_name': None,
+        'selection_reason': 'best skill below threshold',
+        'message': 'No relevant skill is available. Improvise a short procedure with normal tool discipline.',
+        'forced': False,
+        'best_candidate': {
+            'skill_name': 'skill_explain_file',
+            'score': 20.0,
+            'distance': 0.25,
+            'forced': False,
+        },
+        'candidates': [
+            {
+                'skill_name': 'skill_explain_file',
+                'score': 20.0,
+                'distance': 0.25,
+                'forced': False,
+            }
+        ],
+        'rejected_candidates': [],
+    }
+
+
+def test_choose_skill_no_candidate_payload_golden(monkeypatch):
+    monkeypatch.setattr(selection, 'retrieve_skill_candidates', lambda *args, **kwargs: [])
+
+    result = selection.choose_skill_for_intent({}, 'Explain something', {})
+
+    assert result == {
+        'status': 'ok',
+        'skill_name': None,
+        'selection_reason': 'no relevant skill candidates found',
+        'message': 'No relevant skill is available. Improvise a short procedure with normal tool discipline.',
+        'forced': False,
+        'candidates': [],
+        'rejected_candidates': [],
+    }
+
+
 def test_choose_skill_returns_null_selection_when_no_candidates(monkeypatch):
     monkeypatch.setattr(selection, 'retrieve_skill_candidates', lambda *args, **kwargs: [])
 
@@ -88,7 +247,7 @@ def test_create_extensionless_file_does_not_select_skill_authoring_skill(monkeyp
     assert result['skill_name'] is None
     assert result['selection_reason'] == 'no skill candidates passed validation'
     assert result['rejected_candidates'][0]['skill_name'] == 'create_new_skill'
-    assert result['rejected_candidates'][0]['reason'] == 'missing explicit skill-authoring intent'
+    assert result['rejected_candidates'][0]['rejection_reason'] == 'missing explicit skill-authoring intent'
 
 
 def test_request_skill_for_intent_returns_null_selection_without_loading_skill(monkeypatch):
@@ -558,7 +717,7 @@ def test_owasp_skill_is_rejected_without_explicit_security_audit_intent(monkeypa
     assert result['status'] == 'ok'
     assert result['skill_name'] is None
     assert result['selection_reason'] == 'no skill candidates passed validation'
-    assert result['rejected_candidates'][0]['reason'] == 'missing explicit OWASP/security audit intent'
+    assert result['rejected_candidates'][0]['rejection_reason'] == 'missing explicit OWASP/security audit intent'
 
 
 def test_question_intent_penalty_suppresses_skill_selection(monkeypatch):
@@ -660,7 +819,7 @@ def test_create_code_file_does_not_select_skill_authoring_skill(monkeypatch):
     assert result['status'] == 'ok'
     assert result['skill_name'] is None
     assert result['selection_reason'] == 'no skill candidates passed validation'
-    assert result['rejected_candidates'][0]['reason'] == 'missing explicit skill-authoring intent'
+    assert result['rejected_candidates'][0]['rejection_reason'] == 'missing explicit skill-authoring intent'
 
 
 def test_explicit_skill_creation_still_selects_skill_authoring_skill(monkeypatch):

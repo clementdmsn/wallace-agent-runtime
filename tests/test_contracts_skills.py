@@ -155,12 +155,30 @@ def test_skill_validation_serializes_valid_payload():
         valid=True,
         score=8.5,
         reasons=['tag_match', 'filetype_match'],
+        intent={
+            'text': 'explain app.py',
+            'tokens': ['app.py', 'explain', 'python'],
+            'args': {'path': 'app.py'},
+            'action': 'summarize',
+            'filetype': 'py',
+            'domain': 'code',
+            'speech_act': 'command',
+        },
     )
 
     assert validation.to_payload() == {
         'valid': True,
         'score': 8.5,
         'reasons': ['tag_match', 'filetype_match'],
+        'intent': {
+            'text': 'explain app.py',
+            'tokens': ['app.py', 'explain', 'python'],
+            'args': {'path': 'app.py'},
+            'action': 'summarize',
+            'filetype': 'py',
+            'domain': 'code',
+            'speech_act': 'command',
+        },
     }
 
 
@@ -234,9 +252,22 @@ def test_rejected_skill_candidate_serializes_rejection_reason():
 
     assert candidate.to_payload() == {
         'skill_name': 'owasp_security_review',
-        'reason': 'missing required path',
+        'rejection_reason': 'missing required path',
         'score': 4.0,
         'distance': 1.5,
+    }
+
+
+def test_rejected_skill_candidate_accepts_compatibility_rejection_reason():
+    candidate = RejectedSkillCandidate(
+        skill_name='owasp_security_review',
+        rejection_reason='missing required path',
+    )
+
+    assert candidate.reason == 'missing required path'
+    assert candidate.to_payload() == {
+        'skill_name': 'owasp_security_review',
+        'rejection_reason': 'missing required path',
     }
 
 
@@ -264,6 +295,15 @@ def test_skill_selection_result_serializes_nested_selection_payload():
             'valid': True,
             'score': 9.0,
             'reasons': ['tag_match'],
+            'intent': {
+                'text': 'explain app.py',
+                'tokens': ['app.py', 'explain', 'python'],
+                'args': {'path': 'app.py'},
+                'action': 'summarize',
+                'filetype': 'py',
+                'domain': 'code',
+                'speech_act': 'command',
+            },
         },
         distance=0.25,
         forced=True,
@@ -284,7 +324,7 @@ def test_skill_selection_result_serializes_nested_selection_payload():
         rejected_candidates=[
             {
                 'skill_name': 'create_new_skill',
-                'reason': 'below threshold',
+                'rejection_reason': 'below threshold',
                 'score': 2.0,
                 'distance': 2.2,
             }
@@ -300,6 +340,15 @@ def test_skill_selection_result_serializes_nested_selection_payload():
             'valid': True,
             'score': 9.0,
             'reasons': ['tag_match'],
+            'intent': {
+                'text': 'explain app.py',
+                'tokens': ['app.py', 'explain', 'python'],
+                'args': {'path': 'app.py'},
+                'action': 'summarize',
+                'filetype': 'py',
+                'domain': 'code',
+                'speech_act': 'command',
+            },
         },
         'distance': 0.25,
         'forced': True,
@@ -327,7 +376,7 @@ def test_skill_selection_result_serializes_nested_selection_payload():
         'rejected_candidates': [
             {
                 'skill_name': 'create_new_skill',
-                'reason': 'below threshold',
+                'rejection_reason': 'below threshold',
                 'score': 2.0,
                 'distance': 2.2,
             }
@@ -391,7 +440,20 @@ def test_requested_skill_result_serializes_flattened_guidance_payload():
         selection={
             'status': 'ok',
             'skill_name': 'code_explainer',
-            'validation': {'valid': True, 'score': 9.0, 'reasons': ['tag_match']},
+            'validation': {
+                'valid': True,
+                'score': 9.0,
+                'reasons': ['tag_match'],
+                'intent': {
+                    'text': 'explain app.py',
+                    'tokens': ['app.py', 'explain', 'python'],
+                    'args': {'path': 'app.py'},
+                    'action': 'summarize',
+                    'filetype': 'py',
+                    'domain': 'code',
+                    'speech_act': 'command',
+                },
+            },
             'candidates': [{'skill_name': 'code_explainer', 'score': 9.0}],
         },
         guidance={
@@ -422,7 +484,20 @@ def test_requested_skill_result_serializes_flattened_guidance_payload():
         'selection': {
             'status': 'ok',
             'skill_name': 'code_explainer',
-            'validation': {'valid': True, 'score': 9.0, 'reasons': ['tag_match']},
+            'validation': {
+                'valid': True,
+                'score': 9.0,
+                'reasons': ['tag_match'],
+                'intent': {
+                    'text': 'explain app.py',
+                    'tokens': ['app.py', 'explain', 'python'],
+                    'args': {'path': 'app.py'},
+                    'action': 'summarize',
+                    'filetype': 'py',
+                    'domain': 'code',
+                    'speech_act': 'command',
+                },
+            },
             'forced': False,
             'candidates': [{'skill_name': 'code_explainer', 'score': 9.0, 'forced': False}],
             'rejected_candidates': [],

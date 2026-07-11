@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Self, cast
 
-from pydantic import Field, model_validator
+from pydantic import AliasChoices, Field, model_validator
 
 from contracts.base import ContractModel, ResultStatus
 from contracts.types import JsonValue
@@ -27,10 +27,21 @@ class ForbiddenToolCall(ContractModel):
     reason: str = Field(min_length=1)
 
 
+class SkillIntentSnapshot(ContractModel):
+    text: str
+    tokens: list[str] = Field(default_factory=list)
+    args: dict[str, JsonValue] = Field(default_factory=dict)
+    action: str
+    filetype: str | None = None
+    domain: str
+    speech_act: str
+
+
 class SkillValidation(ContractModel):
     valid: bool
     score: float | None = None
     reasons: list[str] = Field(default_factory=list)
+    intent: SkillIntentSnapshot | None = None
 
 
 class SkillCandidate(ContractModel):
@@ -43,9 +54,16 @@ class SkillCandidate(ContractModel):
 
 class RejectedSkillCandidate(ContractModel):
     skill_name: str = Field(min_length=1)
-    reason: str = Field(min_length=1)
+    reason: str = Field(
+        min_length=1,
+        validation_alias=AliasChoices('reason', 'rejection_reason'),
+        serialization_alias='rejection_reason',
+    )
     score: float | None = None
     distance: float | None = Field(default=None, ge=0)
+
+    def to_payload(self) -> dict[str, JsonValue]:
+        return cast(dict[str, JsonValue], self.model_dump(exclude_none=True, mode='json', by_alias=True))
 
 
 class SkillSelectionResult(ContractModel):
@@ -59,6 +77,9 @@ class SkillSelectionResult(ContractModel):
     best_candidate: SkillCandidate | None = None
     candidates: list[SkillCandidate] = Field(default_factory=list)
     rejected_candidates: list[RejectedSkillCandidate] = Field(default_factory=list)
+
+    def to_payload(self) -> dict[str, JsonValue]:
+        return cast(dict[str, JsonValue], self.model_dump(exclude_none=True, mode='json', by_alias=True))
 
 
 class ExecutionGuidance(ContractModel):
