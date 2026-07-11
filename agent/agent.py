@@ -14,6 +14,7 @@ from agent.agent_skill_policy import (
     validate_final_response_against_skill_policy,
 )
 from agent.agent_tool_execution import execute_tool_call
+from agent.final_response_policy import handle_skill_policy_blocked_final_response
 from agent.model_lifecycle import (
     append_assistant_placeholder,
     call_model_once,
@@ -106,6 +107,9 @@ class Agent:
 
     def _request_skill_for_intent(self, selection_text: str) -> dict[str, Any]:
         return request_skill_for_intent(selection_text)
+
+    def _record_skill_event(self, skill_name: str, event: str) -> None:
+        record_skill_event(skill_name, event)
 
     def _is_current_run(self, run_id: int) -> bool:
         return run_id == self.run_id
@@ -258,38 +262,7 @@ class Agent:
         content: str,
         policy_error: dict[str, Any],
     ) -> bool:
-        with self.lock:
-            if not self._is_current_run(run_id):
-                return False
-            if self.messages and self.messages[-1].get('role') == 'assistant':
-                self.messages.pop()
-            self.messages.append({
-                'role': 'system',
-                'content': (
-                    'Runtime skill policy blocked the previous final answer.\n'
-                    f'{policy_error["message"]}\n'
-                    'Do not cite OWASP from memory. Do not provide a final answer until the required tool succeeds.'
-                ),
-            })
-            self._append_skill_policy_event(
-                SkillPolicyEvent(
-                    kind='skill_policy',
-                    status='error',
-                    error=policy_error.get('error'),
-                    message=policy_error.get('message'),
-                    required_tool=policy_error.get('required_tool'),
-                )
-            )
-            self._trace(
-                'skill_policy_blocked_final_response',
-                error=policy_error.get('error'),
-                required_tool=policy_error.get('required_tool'),
-                blocked_content_chars=len(content),
-            )
-        if self.active_skill_name:
-            record_skill_event(self.active_skill_name, 'failure')
-        self._notify_stream()
-        return True
+        return handle_skill_policy_blocked_final_response(self, run_id, content, policy_error)
 
     def call_model(self, run_id: int | None = None):
         if run_id is None:
