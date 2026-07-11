@@ -79,6 +79,8 @@ def visible_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
         role = str(message.get("role", "assistant"))
         if role in {"system", "tool"}:
             continue
+        if role not in {"user", "assistant"}:
+            continue
 
         content = message.get("content") or ""
         if role == "assistant" and not content and message.get("tool_calls"):

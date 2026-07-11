@@ -96,6 +96,7 @@ def test_state_hides_system_and_tool_messages():
             {'role': 'system', 'content': 'hidden'},
             {'role': 'user', 'content': 'hello'},
             {'role': 'tool', 'content': 'hidden tool'},
+            {'role': 'developer', 'content': 'hidden developer'},
             {'role': 'assistant', 'content': 'hi'},
             {'role': 'assistant', 'content': '', 'tool_calls': [{'id': '1'}]},
         ],
@@ -110,7 +111,15 @@ def test_state_hides_system_and_tool_messages():
         {'role': 'user', 'content': 'hello'},
         {'role': 'assistant', 'content': 'hi'},
     ]
-    assert payload['tool_events'] == [{'kind': 'tool', 'tool': 'read_file', 'result': {'status': 'ok'}}]
+    assert payload['tool_events'] == [
+        {
+            'id': '',
+            'kind': 'tool',
+            'args': {},
+            'tool': 'read_file',
+            'result': {'status': 'ok'},
+        }
+    ]
     assert 'runtime_metrics' in payload
     assert payload['active_skill_name'] is None
     assert payload['active_skill_policy'] == {}
