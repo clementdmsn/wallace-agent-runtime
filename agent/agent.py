@@ -17,8 +17,15 @@ from agent.agent_skill_policy import (
 )
 from agent.agent_tool_execution import execute_tool_call
 from agent.model_streaming import consume_model_stream
+from agent.pending_approval import (
+    build_pending_approval_payload,
+    clear_pending_approval,
+    replace_pending_approval,
+    set_pending_approval,
+    snapshot_pending_approval,
+)
 from agent.run_trace import RunTrace
-from contracts.events import PendingApproval, SkillPolicyEvent, SkillSelectionEvent, SkillSelectionEventStatus
+from contracts.events import SkillPolicyEvent, SkillSelectionEvent, SkillSelectionEventStatus
 from tools.tools import OPENAI_TOOLS
 from config import SETTINGS
 from skills.skills import record_skill_event, request_skill_for_intent
@@ -123,10 +130,7 @@ class Agent:
             return self.metrics.snapshot()
 
     def snapshot_pending_approval(self) -> dict[str, Any] | None:
-        with self.lock:
-            if not self.pending_approval:
-                return None
-            return PendingApproval.model_validate(self.pending_approval).to_payload()
+        return snapshot_pending_approval(self)
 
     def _build_pending_approval_payload(
         self,
@@ -135,14 +139,7 @@ class Agent:
         result: dict[str, Any],
         call_id: str = '',
     ) -> dict[str, Any]:
-        return PendingApproval(
-            tool=tool_name,
-            call_id=call_id,
-            args=dict(args),
-            approval_id=result.get('approval_id'),
-            domain=result.get('domain'),
-            url=result.get('url') or args.get('url'),
-        ).to_payload()
+        return build_pending_approval_payload(tool_name, args, result, call_id)
 
     def set_pending_approval(
         self,
@@ -151,8 +148,7 @@ class Agent:
         result: dict[str, Any],
         call_id: str = '',
     ) -> None:
-        with self.lock:
-            self.pending_approval = self._build_pending_approval_payload(tool_name, args, result, call_id)
+        set_pending_approval(self, tool_name, args, result, call_id)
 
     def replace_pending_approval(
         self,
@@ -162,26 +158,10 @@ class Agent:
         result: dict[str, Any],
         call_id: str = '',
     ) -> bool:
-        with self.lock:
-            if not self.pending_approval:
-                return False
-            if previous_approval_id is not None and self.pending_approval.get('approval_id') != previous_approval_id:
-                return False
-            self.pending_approval = self._build_pending_approval_payload(tool_name, args, result, call_id)
-            self.last_error = 'Waiting for user approval.'
-            return True
+        return replace_pending_approval(self, previous_approval_id, tool_name, args, result, call_id)
 
     def clear_pending_approval(self, approval_id: str | None = None) -> dict[str, Any] | None:
-        with self.lock:
-            if not self.pending_approval:
-                return None
-            if approval_id is not None and self.pending_approval.get('approval_id') != approval_id:
-                return None
-            pending = PendingApproval.model_validate(self.pending_approval).to_payload()
-            self.pending_approval = None
-            if self.last_error == 'Waiting for user approval.':
-                self.last_error = ''
-            return pending
+        return clear_pending_approval(self, approval_id)
 
     def is_busy(self) -> bool:
         with self.lock:
