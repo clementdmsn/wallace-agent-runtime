@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from typing import Any
-
 from pydantic import Field
 
 from contracts.base import ContractModel, ResultStatus
+from contracts.types import JsonValue
 
 
 class ToolResult(ContractModel):
@@ -31,7 +30,7 @@ class GenericToolResult(ToolResult):
     replacements: int | None = None
     created: bool | None = None
     bytes_written: int | None = None
-    result: Any | None = None
+    result: JsonValue = None
     url: str | None = None
     final_url: str | None = None
     title: str | None = None
@@ -62,14 +61,14 @@ class FunctionExplanationContent(ContractModel):
     kind: str | None = None
     lines: list[int | None]
     docstring: str | None = None
-    params: list[Any] = Field(default_factory=list)
-    decorators: list[Any] = Field(default_factory=list)
+    params: list[JsonValue] = Field(default_factory=list)
+    decorators: list[JsonValue] = Field(default_factory=list)
     calls: list[str] = Field(default_factory=list)
     returns: list[str] = Field(default_factory=list)
     raises: list[str] = Field(default_factory=list)
     writes: list[str] = Field(default_factory=list)
     reads: list[str] = Field(default_factory=list)
-    instance_attributes: list[Any] = Field(default_factory=list)
+    instance_attributes: list[JsonValue] = Field(default_factory=list)
     nested_symbols: list[str | None] = Field(default_factory=list)
     effects: list[str] = Field(default_factory=list)
     summary: str
@@ -178,17 +177,17 @@ class SkillAuthoringResult(ToolResult):
     draft_metadata_path: str | None = None
     draft_procedure_path: str | None = None
     draft_markdown: str | None = None
-    draft_json_payload: dict[str, Any] | None = None
-    validation: dict[str, Any] | None = None
+    draft_json_payload: dict[str, JsonValue] | None = None
+    validation: dict[str, JsonValue] | None = None
     missing_fields: list[str] | None = None
     unexpected_fields: list[str] | None = None
-    validation_errors: list[dict[str, Any]] | None = None
+    validation_errors: list[dict[str, JsonValue]] | None = None
     repair_instructions: list[str] | None = None
-    repair_suggestions: list[dict[str, Any]] | None = None
-    retry_policy: dict[str, Any] | str | None = None
+    repair_suggestions: list[dict[str, JsonValue]] | None = None
+    retry_policy: dict[str, JsonValue] | str | None = None
     retry_limit_reached: bool | None = None
-    index_result: dict[str, Any] | None = None
+    index_result: dict[str, JsonValue] | None = None
     registry_reloaded: bool | None = None
     registry_reload_error: str | None = None
-    normalizations: list[dict[str, Any]] | None = None
-    applied_repairs: list[dict[str, Any]] | None = None
+    normalizations: list[dict[str, JsonValue]] | None = None
+    applied_repairs: list[dict[str, JsonValue]] | None = None

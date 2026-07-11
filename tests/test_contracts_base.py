@@ -4,6 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from contracts.base import ContractModel, ResultStatus
+from contracts.types import JsonValue
 
 
 class DemoContract(ContractModel):
@@ -16,9 +17,20 @@ class DemoStatusContract(ContractModel):
     status: ResultStatus
 
 
+class DemoJsonContract(ContractModel):
+    payload: dict[str, JsonValue]
+
+
 def test_contract_model_rejects_unknown_fields():
     with pytest.raises(ValidationError):
         DemoContract(name='demo', count=1, unexpected=True)
+
+
+def test_contract_validation_errors_are_not_silently_discarded():
+    with pytest.raises(ValidationError) as exc_info:
+        DemoContract(name='demo', count='not-an-int')
+
+    assert exc_info.value.errors()[0]['loc'] == ('count',)
 
 
 def test_contract_model_validates_assignment():
@@ -63,3 +75,29 @@ def test_result_status_serializes_enum_values():
 def test_result_status_rejects_unknown_values():
     with pytest.raises(ValidationError):
         DemoStatusContract(status='pending')
+
+
+def test_json_value_accepts_nested_json_payloads():
+    contract = DemoJsonContract(
+        payload={
+            'string': 'value',
+            'integer': 1,
+            'float': 1.5,
+            'boolean': True,
+            'null': None,
+            'array': ['item', 2, False],
+            'object': {'nested': 'value'},
+        }
+    )
+
+    assert contract.to_payload() == {
+        'payload': {
+            'string': 'value',
+            'integer': 1,
+            'float': 1.5,
+            'boolean': True,
+            'null': None,
+            'array': ['item', 2, False],
+            'object': {'nested': 'value'},
+        }
+    }
