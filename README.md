@@ -25,8 +25,9 @@ critical behaviors with deterministic offline evals.
 
 ## Trace-Driven Demo
 
-Wallace demos are presented as deterministic traces and eval contracts rather
-than live recordings. The primary scenario is an OWASP-assisted audit:
+Wallace demos are presented as deterministic trace-style artifacts and eval
+contracts rather than live recordings. The primary scenario is an
+OWASP-assisted audit:
 
 ```text
 security audit app.py using OWASP
@@ -48,11 +49,13 @@ Representative trace excerpt:
 ```
 
 See the full guided walkthrough in
-[`docs/demo/owasp-audit.md`](docs/demo/owasp-audit.md), the sample trace in
-[`docs/examples/owasp-trace.json`](docs/examples/owasp-trace.json), the sample
-report in [`docs/examples/owasp-report.md`](docs/examples/owasp-report.md), and
-the stored offline eval output in
+[`docs/demo/owasp-audit.md`](docs/demo/owasp-audit.md), the compact demo trace
+in [`docs/examples/owasp-trace.json`](docs/examples/owasp-trace.json), the
+sample report in [`docs/examples/owasp-report.md`](docs/examples/owasp-report.md),
+and the stored offline eval output in
 [`docs/examples/offline-eval-report.json`](docs/examples/offline-eval-report.json).
+The compact demo trace is curated for documentation; validated JSONL run traces
+are emitted separately when `WALLACE_RUN_TRACE` is enabled.
 
 ## Why This Project Exists
 
