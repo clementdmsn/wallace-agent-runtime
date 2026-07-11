@@ -11,6 +11,7 @@ from agent.agent_skill_policy import (
     validate_tool_call_against_skill_policy,
 )
 from contracts.events import ToolEvent
+from contracts.tool_results import CurlResult
 from skills.stats import record_skill_event
 from tools.tools import TOOLS
 
@@ -153,6 +154,12 @@ def apply_skill_authoring_retry_policy(agent: Any, call_name: str, result: objec
     }
 
 
+def validate_registered_tool_result(call_name: str, result: object) -> object:
+    if call_name == 'curl_url' and isinstance(result, dict):
+        return CurlResult(**result).to_payload()
+    return result
+
+
 def execute_registered_tool(agent: Any, call_name: str, args: dict[str, Any]) -> object:
     policy_error = validate_tool_call_against_skill_policy(agent, call_name, args)
     if policy_error is not None:
@@ -161,6 +168,7 @@ def execute_registered_tool(agent: Any, call_name: str, args: dict[str, Any]) ->
 
     record_active_skill_event(agent, 'used')
     result = TOOLS[call_name].func(**args)
+    result = validate_registered_tool_result(call_name, result)
     result = apply_skill_authoring_retry_policy(agent, call_name, result)
     remember_verified_symbols(agent, call_name, args, result)
     remember_owasp_reference_search(agent, call_name, result)
