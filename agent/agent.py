@@ -4,10 +4,9 @@ from openai import OpenAI
 import logging
 import os
 import threading
-from pathlib import Path
 from typing import Any
 
-from system_prompt.system_prompt import build_request_system_prompt, build_system_prompt
+from system_prompt.system_prompt import build_system_prompt
 from agent.context_compaction import compact_context_references
 from agent.agent_metrics import AgentMetrics, estimate_messages_chars
 from agent.agent_skill_policy import (
@@ -36,21 +35,25 @@ from agent.runtime_state import (
     snapshot_tool_events,
     trace,
 )
+from agent.skill_selection import (
+    append_skill_policy_event,
+    append_skill_selection_event,
+    configure_request_skill,
+    latest_user_text,
+    select_skill_for_current_request,
+    skill_selection_event_status as normalize_skill_selection_event_status,
+    skill_selection_text_for_latest_user,
+)
 from contracts.events import SkillPolicyEvent, SkillSelectionEvent, SkillSelectionEventStatus
 from tools.tools import OPENAI_TOOLS
 from config import SETTINGS
 from skills.skills import record_skill_event, request_skill_for_intent
-from skills.intent import extract_intent
 
 logger = logging.getLogger(__name__)
 
 
 def skill_selection_event_status(value: object) -> SkillSelectionEventStatus:
-    if value == SkillSelectionEventStatus.OK or value == SkillSelectionEventStatus.OK.value:
-        return SkillSelectionEventStatus.OK
-    if value == SkillSelectionEventStatus.ERROR or value == SkillSelectionEventStatus.ERROR.value:
-        return SkillSelectionEventStatus.ERROR
-    return SkillSelectionEventStatus.UNKNOWN
+    return normalize_skill_selection_event_status(value)
 
 
 class Agent:
@@ -95,6 +98,9 @@ class Agent:
 
     def _set_skill_state_from_selection(self, result: dict[str, Any]) -> None:
         set_skill_state_from_selection(self, result)
+
+    def _request_skill_for_intent(self, selection_text: str) -> dict[str, Any]:
+        return request_skill_for_intent(selection_text)
 
     def _is_current_run(self, run_id: int) -> bool:
         return run_id == self.run_id
@@ -202,37 +208,10 @@ class Agent:
         return payload
 
     def _latest_user_text(self) -> str:
-        with self.lock:
-            for message in reversed(self.messages):
-                if message.get('role') == 'user':
-                    content = message.get('content')
-                    if isinstance(content, str):
-                        return content
-        return ''
+        return latest_user_text(self)
 
     def _skill_selection_text_for_latest_user(self) -> str:
-        user_text = self._latest_user_text().strip()
-        if self.last_fulfilled_skill_name != 'owasp_security_review':
-            return user_text
-
-        intent = extract_intent(user_text)
-        path = intent.get('args', {}).get('path')
-        tokens = intent.get('tokens') or set()
-        action = intent.get('action')
-        if not isinstance(path, str) or not path:
-            return user_text
-        if action != 'review' and 'review' not in tokens and 'audit' not in tokens and 'inspect' not in tokens:
-            return user_text
-        if tokens & {'security', 'owasp', 'vulnerability', 'vulnerabilities', 'appsec'}:
-            return user_text
-
-        name = Path(path).name.lower()
-        if name.startswith('security_') or name.startswith('security-'):
-            return f'OWASP security review {path}'
-        if user_text.lower().strip().startswith(('now review ', 'review ', 'audit ', 'inspect ')):
-            return f'OWASP security review {path}'
-
-        return user_text
+        return skill_selection_text_for_latest_user(self)
 
     def _prepare_model_call(self, run_id: int) -> tuple[list[dict[str, Any]], int, int | None] | None:
         with self.lock:
@@ -332,79 +311,20 @@ class Agent:
         return {'role': 'assistant', 'content': error_text}
 
     def _select_skill_for_current_request(self) -> dict[str, Any] | None:
-        user_text = self._latest_user_text().strip()
-        if not user_text:
-            return None
-        selection_text = self._skill_selection_text_for_latest_user()
-
-        try:
-            self._trace('skill_selection_started', user_message=user_text, selection_text=selection_text)
-            result = request_skill_for_intent(selection_text)
-        except Exception as exc:
-            with self.lock:
-                self._append_skill_selection_event(
-                    SkillSelectionEvent(
-                        kind='skill_selection',
-                        status='error',
-                        error=str(exc),
-                    )
-                )
-                self._trace('skill_selection_failed', error=str(exc))
-            return None
-
-        with self.lock:
-            self._append_skill_selection_event(
-                SkillSelectionEvent(
-                    kind='skill_selection',
-                    status=skill_selection_event_status(result.get('status')),
-                    skill_name=result.get('skill_name'),
-                    selection=result.get('selection'),
-                )
-            )
-            self._trace(
-                'skill_selection_finished',
-                status=result.get('status'),
-                skill_name=result.get('skill_name'),
-                result=self.run_trace.payload(result) if self.run_trace else result,
-            )
-
-        if result.get('status') != 'ok' or not result.get('skill_name'):
-            return None
-        return result
+        return select_skill_for_current_request(self)
 
     def _append_skill_selection_event(self, event: SkillSelectionEvent) -> None:
-        self.tool_events.append(event.to_payload())
+        append_skill_selection_event(self, event)
 
     def _append_skill_policy_event(self, event: SkillPolicyEvent) -> None:
-        self.tool_events.append(event.to_payload())
+        append_skill_policy_event(self, event)
 
     def _configure_request_skill(
         self,
         run_id: int,
         selected_skill: dict[str, Any] | None,
     ) -> bool:
-        with self.lock:
-            if not self._is_current_run(run_id):
-                return False
-            self.active_skill_selection = selected_skill
-            self._set_skill_state_from_selection(selected_skill or {})
-            base_prompt = str(self.messages[0].get('content', '')) if self.messages else ''
-            self.request_system_prompt = build_request_system_prompt(base_prompt, selected_skill)
-            if self.metrics.current_request:
-                self.metrics.current_request['estimated_system_prompt_chars'] = len(self.request_system_prompt)
-            self._trace(
-                'request_system_prompt_built',
-                active_skill_name=self.active_skill_name,
-                active_skill_selection=(
-                    self.run_trace.payload(self.active_skill_selection)
-                    if self.run_trace
-                    else self.active_skill_selection
-                ),
-                system_prompt_chars=len(self.request_system_prompt),
-                system_prompt=self.run_trace.payload(self.request_system_prompt) if self.run_trace else self.request_system_prompt,
-            )
-
-        return True
+        return configure_request_skill(self, run_id, selected_skill)
 
     def _call_model_once(self, run_id: int) -> dict[str, Any] | None:
         prepared = self._prepare_model_call(run_id)
