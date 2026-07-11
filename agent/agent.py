@@ -25,6 +25,17 @@ from agent.pending_approval import (
     snapshot_pending_approval,
 )
 from agent.run_trace import RunTrace
+from agent.runtime_state import (
+    append_message_locked,
+    finish_generation,
+    is_busy,
+    notify_stream,
+    reserve_generation,
+    snapshot_messages,
+    snapshot_runtime_metrics,
+    snapshot_tool_events,
+    trace,
+)
 from contracts.events import SkillPolicyEvent, SkillSelectionEvent, SkillSelectionEventStatus
 from tools.tools import OPENAI_TOOLS
 from config import SETTINGS
@@ -111,23 +122,16 @@ class Agent:
             self._append_message_locked(submitted)
 
     def _append_message_locked(self, submitted: dict[str, Any]) -> None:
-        self.messages.append(submitted)
-        if submitted.get('role') == 'user':
-            self.tool_events = []
-            self.pending_approval = None
-            self._reset_skill_state()
+        append_message_locked(self, submitted)
 
     def snapshot_messages(self) -> list[dict[str, Any]]:
-        with self.lock:
-            return [dict(message) for message in self.messages]
+        return snapshot_messages(self)
 
     def snapshot_tool_events(self) -> list[dict[str, Any]]:
-        with self.lock:
-            return [dict(event) for event in self.tool_events]
+        return snapshot_tool_events(self)
 
     def snapshot_runtime_metrics(self) -> dict[str, object]:
-        with self.lock:
-            return self.metrics.snapshot()
+        return snapshot_runtime_metrics(self)
 
     def snapshot_pending_approval(self) -> dict[str, Any] | None:
         return snapshot_pending_approval(self)
@@ -164,60 +168,22 @@ class Agent:
         return clear_pending_approval(self, approval_id)
 
     def is_busy(self) -> bool:
-        with self.lock:
-            return self.is_generating
+        return is_busy(self)
 
     def _notify_stream(self):
-        callback = self.on_stream
-        if callback is not None:
-            try:
-                callback()
-            except Exception:
-                logger.exception('stream notification callback failed')
+        notify_stream(self)
 
     def _trace(self, event: str, **fields: Any) -> None:
-        trace = self.run_trace
-        if trace is not None:
-            trace.record(event, **fields)
+        trace(self, event, **fields)
 
     def reserve_generation(self, submitted: dict[str, Any] | None = None) -> int | None:
-        with self.lock:
-            if self.is_generating:
-                return None
-            if submitted is not None:
-                self._append_message_locked(submitted)
-            self.is_generating = True
-            self.last_error = ''
-            self.loop_turn = 0
-            self.run_id += 1
-            current_run_id = self.run_id
-            system_prompt = str(self.messages[0].get('content', '')) if self.messages else ''
-            self.metrics.start_request(current_run_id, self.model, len(system_prompt))
-            self.run_trace = RunTrace.start(current_run_id)
-            latest_user = self._latest_user_text()
-            self._trace(
-                'run_started',
-                model=self.model,
-                system_prompt_chars=len(system_prompt),
-                user_message=self.run_trace.payload(latest_user) if self.run_trace else latest_user,
-            )
-        self._notify_stream()
-        return current_run_id
+        return reserve_generation(self, submitted)
 
     def _start_generation(self) -> int | None:
         return self.reserve_generation()
 
     def _finish_generation(self, run_id: int):
-        with self.lock:
-            if not self._is_current_run(run_id):
-                return
-            self.is_generating = False
-            self.metrics.finish_request(run_id)
-            last_error = self.last_error
-            metrics = self.metrics.snapshot().get('last_request')
-            self._trace('run_finished', last_error=last_error, metrics=metrics)
-            self.run_trace = None
-        self._notify_stream()
+        finish_generation(self, run_id)
 
     def _normalize_message_for_api(self, message: dict[str, Any]) -> dict[str, Any]:
         payload: dict[str, Any] = {'role': message['role']}

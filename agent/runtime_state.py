@@ -1,0 +1,89 @@
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+from agent.run_trace import RunTrace
+
+logger = logging.getLogger(__name__)
+
+
+def append_message_locked(agent: Any, submitted: dict[str, Any]) -> None:
+    agent.messages.append(submitted)
+    if submitted.get('role') == 'user':
+        agent.tool_events = []
+        agent.pending_approval = None
+        agent._reset_skill_state()
+
+
+def snapshot_messages(agent: Any) -> list[dict[str, Any]]:
+    with agent.lock:
+        return [dict(message) for message in agent.messages]
+
+
+def snapshot_tool_events(agent: Any) -> list[dict[str, Any]]:
+    with agent.lock:
+        return [dict(event) for event in agent.tool_events]
+
+
+def snapshot_runtime_metrics(agent: Any) -> dict[str, object]:
+    with agent.lock:
+        return agent.metrics.snapshot()
+
+
+def is_busy(agent: Any) -> bool:
+    with agent.lock:
+        return agent.is_generating
+
+
+def notify_stream(agent: Any) -> None:
+    callback = agent.on_stream
+    if callback is not None:
+        try:
+            callback()
+        except Exception:
+            logger.exception('stream notification callback failed')
+
+
+def trace(agent: Any, event: str, **fields: Any) -> None:
+    run_trace = agent.run_trace
+    if run_trace is not None:
+        run_trace.record(event, **fields)
+
+
+def reserve_generation(agent: Any, submitted: dict[str, Any] | None = None) -> int | None:
+    with agent.lock:
+        if agent.is_generating:
+            return None
+        if submitted is not None:
+            agent._append_message_locked(submitted)
+        agent.is_generating = True
+        agent.last_error = ''
+        agent.loop_turn = 0
+        agent.run_id += 1
+        current_run_id = agent.run_id
+        system_prompt = str(agent.messages[0].get('content', '')) if agent.messages else ''
+        agent.metrics.start_request(current_run_id, agent.model, len(system_prompt))
+        agent.run_trace = RunTrace.start(current_run_id)
+        latest_user = agent._latest_user_text()
+        agent._trace(
+            'run_started',
+            model=agent.model,
+            system_prompt_chars=len(system_prompt),
+            user_message=agent.run_trace.payload(latest_user) if agent.run_trace else latest_user,
+        )
+    agent._notify_stream()
+    return current_run_id
+
+
+def finish_generation(agent: Any, run_id: int) -> None:
+    with agent.lock:
+        if not agent._is_current_run(run_id):
+            return
+        agent.is_generating = False
+        agent.metrics.finish_request(run_id)
+        last_error = agent.last_error
+        metrics = agent.metrics.snapshot().get('last_request')
+        agent._trace('run_finished', last_error=last_error, metrics=metrics)
+        agent.run_trace = None
+    agent._notify_stream()
