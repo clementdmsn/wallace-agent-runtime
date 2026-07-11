@@ -8,6 +8,7 @@ from contracts.skills import (
     ForbiddenToolCall,
     RecommendedToolCall,
     RejectedSkillCandidate,
+    RequestedSkillErrorResult,
     RequestedSkillResult,
     ResolvedTaskType,
     SkillCandidate,
@@ -599,3 +600,22 @@ def test_requested_skill_result_rejects_invalid_nested_guidance():
                 'recommended_tool_calls': [{'tool': 'discover_review_targets'}],
             },
         )
+
+
+def test_requested_skill_error_result_serializes_public_payload():
+    result = RequestedSkillErrorResult(status='error', error='empty intent')
+
+    assert result.to_payload() == {
+        'status': 'error',
+        'error': 'empty intent',
+    }
+
+
+def test_requested_skill_error_result_rejects_non_error_status():
+    with pytest.raises(ValidationError):
+        RequestedSkillErrorResult(status='ok', error='empty intent')
+
+
+def test_requested_skill_error_result_rejects_empty_error():
+    with pytest.raises(ValidationError):
+        RequestedSkillErrorResult(status='error', error='')

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Self, cast
+from typing import Literal, Self, cast
 
 from pydantic import AliasChoices, Field, model_validator
 
@@ -155,3 +155,8 @@ class RequestedSkillResult(ContractModel):
                     payload.pop(field_name, None)
 
         return cast(dict[str, JsonValue], payload)
+
+
+class RequestedSkillErrorResult(ContractModel):
+    status: Literal[ResultStatus.ERROR]
+    error: str = Field(min_length=1)
