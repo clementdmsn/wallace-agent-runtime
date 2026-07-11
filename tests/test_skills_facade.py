@@ -87,13 +87,17 @@ def test_request_skill_for_intent_returns_loaded_skill_guidance(monkeypatch):
     monkeypatch.setattr(
         skills,
         'choose_skill_for_intent',
-        lambda intent, arguments, k, threshold: {'status': 'ok', 'skill_name': 'demo_skill', 'score': 10},
+        lambda intent, arguments, k, threshold: {
+            'status': 'ok',
+            'skill_name': 'demo_skill',
+            'candidates': [{'skill_name': 'demo_skill', 'score': 10}],
+        },
     )
     monkeypatch.setattr(
         skills,
         'build_execution_guidance',
         lambda skill, intent, arguments: {
-            'resolved_task_type': 'demo',
+            'resolved_task_type': 'generic_skill_procedure',
             'recommended_tool_calls': [{'tool': 'read_file', 'arguments': {'path': arguments['path']}}],
             'allowed_tools': ['read_file'],
             'forbidden_tool_calls': [],
@@ -113,8 +117,14 @@ def test_request_skill_for_intent_returns_loaded_skill_guidance(monkeypatch):
     assert result['when_not_to_use'] == ['Do not use for non-demos.']
     assert result['exclusions'] == ['non-demo']
     assert result['arguments'] == {'path': 'app.py'}
-    assert result['resolved_task_type'] == 'demo'
+    assert result['resolved_task_type'] == 'generic_skill_procedure'
     assert result['recommended_tool_calls'][0]['tool'] == 'read_file'
     assert result['allowed_tools'] == ['read_file']
     assert result['procedure_overrides'] == ['Read first.']
-    assert result['selection'] == {'status': 'ok', 'skill_name': 'demo_skill', 'score': 10}
+    assert result['selection'] == {
+        'status': 'ok',
+        'skill_name': 'demo_skill',
+        'forced': False,
+        'candidates': [{'skill_name': 'demo_skill', 'score': 10, 'forced': False}],
+        'rejected_candidates': [],
+    }
