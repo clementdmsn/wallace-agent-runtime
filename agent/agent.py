@@ -7,15 +7,21 @@ import threading
 from typing import Any
 
 from system_prompt.system_prompt import build_system_prompt
-from agent.context_compaction import compact_context_references
-from agent.agent_metrics import AgentMetrics, estimate_messages_chars
+from agent.agent_metrics import AgentMetrics
 from agent.agent_skill_policy import (
     reset_skill_state,
     set_skill_state_from_selection,
     validate_final_response_against_skill_policy,
 )
 from agent.agent_tool_execution import execute_tool_call
-from agent.model_streaming import consume_model_stream
+from agent.model_lifecycle import (
+    append_assistant_placeholder,
+    call_model_once,
+    fail_model_call,
+    finish_model_call,
+    normalize_message_for_api,
+    prepare_model_call,
+)
 from agent.pending_approval import (
     build_pending_approval_payload,
     clear_pending_approval,
@@ -45,7 +51,6 @@ from agent.skill_selection import (
     skill_selection_text_for_latest_user,
 )
 from contracts.events import SkillPolicyEvent, SkillSelectionEvent, SkillSelectionEventStatus
-from tools.tools import OPENAI_TOOLS
 from config import SETTINGS
 from skills.skills import record_skill_event, request_skill_for_intent
 
@@ -192,20 +197,7 @@ class Agent:
         finish_generation(self, run_id)
 
     def _normalize_message_for_api(self, message: dict[str, Any]) -> dict[str, Any]:
-        payload: dict[str, Any] = {'role': message['role']}
-
-        if 'content' in message:
-            payload['content'] = message['content']
-
-        if message.get('role') == 'assistant' and message.get('tool_calls'):
-            payload['tool_calls'] = message['tool_calls']
-            payload['content'] = message.get('content')
-
-        if message.get('role') == 'tool':
-            payload['tool_call_id'] = message['tool_call_id']
-            payload['content'] = message.get('content', '')
-
-        return payload
+        return normalize_message_for_api(message)
 
     def _latest_user_text(self) -> str:
         return latest_user_text(self)
@@ -214,58 +206,10 @@ class Agent:
         return skill_selection_text_for_latest_user(self)
 
     def _prepare_model_call(self, run_id: int) -> tuple[list[dict[str, Any]], int, int | None] | None:
-        with self.lock:
-            if not self._is_current_run(run_id):
-                return None
-            request_messages = [self._normalize_message_for_api(dict(message)) for message in self.messages]
-            if request_messages and self.request_system_prompt:
-                request_messages[0]['content'] = self.request_system_prompt
-            turn_index = self.loop_turn
-            uncompacted_prompt_chars = estimate_messages_chars(request_messages)
-            request_messages, compaction_stats = compact_context_references(request_messages)
-            prompt_chars = estimate_messages_chars(request_messages)
-            model_call_index = self.metrics.start_model_call(
-                run_id,
-                turn_index,
-                self.model,
-                prompt_chars,
-                uncompacted_prompt_chars=uncompacted_prompt_chars,
-                compaction_stats=compaction_stats,
-            )
-            if compaction_stats.get('context_reference_count'):
-                self._trace(
-                    'context_compaction_applied',
-                    turn=turn_index,
-                    original_prompt_chars=uncompacted_prompt_chars,
-                    compacted_prompt_chars=prompt_chars,
-                    saved_chars=compaction_stats.get('context_reference_saved_chars'),
-                    reference_count=compaction_stats.get('context_reference_count'),
-                    source_count=compaction_stats.get('context_reference_source_count'),
-                    aliases=compaction_stats.get('context_reference_aliases'),
-                    transforms=compaction_stats.get('context_reference_transforms'),
-                )
-            self._trace(
-                'model_call_started',
-                turn=turn_index,
-                model=self.model,
-                prompt_chars=prompt_chars,
-                uncompacted_prompt_chars=uncompacted_prompt_chars,
-                context_reference_saved_chars=compaction_stats.get('context_reference_saved_chars'),
-                context_reference_count=compaction_stats.get('context_reference_count'),
-                messages=self.run_trace.payload(request_messages) if self.run_trace else request_messages,
-            )
-
-        return request_messages, turn_index, model_call_index
+        return prepare_model_call(self, run_id)
 
     def _append_assistant_placeholder(self, run_id: int) -> dict[str, Any] | None:
-        with self.lock:
-            if not self._is_current_run(run_id):
-                return None
-            assistant_message: dict[str, Any] = {'role': 'assistant', 'content': ''}
-            self.messages.append(assistant_message)
-
-        self._notify_stream()
-        return assistant_message
+        return append_assistant_placeholder(self, run_id)
 
     def _finish_model_call(
         self,
@@ -274,20 +218,7 @@ class Agent:
         turn_index: int,
         assistant_message: dict[str, Any],
     ) -> dict[str, Any] | None:
-        with self.lock:
-            if not self._is_current_run(run_id):
-                return None
-            if assistant_message.get('tool_calls') and not assistant_message.get('content'):
-                assistant_message['content'] = ''
-            self.metrics.finish_model_call(run_id, model_call_index)
-            self._trace(
-                'model_call_finished',
-                turn=turn_index,
-                assistant_message=self.run_trace.payload(assistant_message) if self.run_trace else assistant_message,
-            )
-
-        self._notify_stream()
-        return dict(assistant_message)
+        return finish_model_call(self, run_id, model_call_index, turn_index, assistant_message)
 
     def _fail_model_call(
         self,
@@ -297,18 +228,7 @@ class Agent:
         assistant_message: dict[str, Any],
         exc: Exception,
     ) -> dict[str, Any] | None:
-        error_text = f'[Error: {exc}]'
-        with self.lock:
-            if not self._is_current_run(run_id):
-                return None
-            assistant_message.clear()
-            assistant_message.update({'role': 'assistant', 'content': error_text})
-            self.last_error = str(exc)
-            self.metrics.finish_model_call(run_id, model_call_index)
-            self._trace('model_call_failed', turn=turn_index, error=str(exc))
-
-        self._notify_stream()
-        return {'role': 'assistant', 'content': error_text}
+        return fail_model_call(self, run_id, model_call_index, turn_index, assistant_message, exc)
 
     def _select_skill_for_current_request(self) -> dict[str, Any] | None:
         return select_skill_for_current_request(self)
@@ -327,30 +247,7 @@ class Agent:
         return configure_request_skill(self, run_id, selected_skill)
 
     def _call_model_once(self, run_id: int) -> dict[str, Any] | None:
-        prepared = self._prepare_model_call(run_id)
-        if prepared is None:
-            return None
-        request_messages, turn_index, model_call_index = prepared
-
-        assistant_message = self._append_assistant_placeholder(run_id)
-        if assistant_message is None:
-            return None
-
-        try:
-            stream = self.client.chat.completions.create(
-                model=self.model,
-                messages=request_messages,
-                tools=OPENAI_TOOLS,
-                temperature=0.1,
-                stream=True,
-            )
-
-            if not consume_model_stream(self, stream, run_id, model_call_index, assistant_message):
-                return None
-            return self._finish_model_call(run_id, model_call_index, turn_index, assistant_message)
-
-        except Exception as exc:
-            return self._fail_model_call(run_id, model_call_index, turn_index, assistant_message, exc)
+        return call_model_once(self, run_id)
 
     def _execute_callable(self, tool_call: dict[str, Any], run_id: int) -> bool:
         return execute_tool_call(self, tool_call, run_id)
