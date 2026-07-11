@@ -1,8 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
+from contracts.skills import (
+    RejectedSkillCandidate,
+    SkillCandidate,
+    SkillSelectionResult,
+    SkillValidation,
+)
 from skills.intent import extract_intent
 from skills.skills_registry import Skill
 from skills.stats import get_skill_score_bonus, record_skill_event
@@ -42,6 +48,63 @@ SECURITY_AUDIT_TOKENS = {
 NON_AUDIT_ACTIONS = {'create', 'debug', 'edit', 'delete'}
 
 
+def selection_result_payload(**fields: Any) -> dict[str, Any]:
+    result = SkillSelectionResult(**fields)
+    payload = result.to_payload()
+    if result.skill_name is None:
+        payload['skill_name'] = None
+    return cast(dict[str, Any], payload)
+
+
+def skill_validation_payload(validation: dict[str, Any], valid: bool = True) -> dict[str, Any]:
+    return cast(
+        dict[str, Any],
+        SkillValidation(
+            valid=valid,
+            score=validation.get('score'),
+            reasons=list(validation.get('reasons') or []),
+        ).to_payload(),
+    )
+
+
+def skill_candidate_payload(
+    skill_name: str,
+    *,
+    score: float | None = None,
+    distance: float | None = None,
+    priority: int | None = None,
+    forced: bool = False,
+) -> dict[str, Any]:
+    return cast(
+        dict[str, Any],
+        SkillCandidate(
+            skill_name=skill_name,
+            score=score,
+            distance=distance,
+            priority=priority,
+            forced=forced,
+        ).to_payload(),
+    )
+
+
+def rejected_skill_candidate_payload(
+    skill_name: str,
+    reason: str,
+    *,
+    score: float | None = None,
+    distance: float | None = None,
+) -> dict[str, Any]:
+    return cast(
+        dict[str, Any],
+        RejectedSkillCandidate(
+            skill_name=skill_name,
+            reason=reason,
+            score=score,
+            distance=distance,
+        ).to_payload(),
+    )
+
+
 # Selection combines FAISS retrieval, syntax checks, heuristic scoring, and
 # historical skill feedback into one ranked skill choice.
 def is_explicit_skill_authoring_intent(intent: dict[str, Any]) -> bool:
@@ -71,48 +134,38 @@ def forced_owasp_security_review_choice(
 
     skill = skills_by_name.get(OWASP_SECURITY_REVIEW_SKILL)
     if skill is None:
-        return {
-            'status': 'ok',
-            'skill_name': None,
-            'selection_reason': 'owasp security audit requested but owasp_security_review is not loaded',
-            'message': 'OWASP security audit was requested, but the OWASP security review skill is not available.',
-            'candidates': [],
-        }
+        return selection_result_payload(
+            status='ok',
+            skill_name=None,
+            selection_reason='owasp security audit requested but owasp_security_review is not loaded',
+            message='OWASP security audit was requested, but the OWASP security review skill is not available.',
+        )
 
     ok, syntax_error = validate_skill_syntax(skill, arguments)
     if not ok:
-        return {
-            'status': 'ok',
-            'skill_name': None,
-            'selection_reason': 'owasp security audit requested but required arguments are missing',
-            'message': f'OWASP security audit requires valid arguments: {syntax_error}.',
-            'rejected_candidates': [
-                {
-                    'skill_name': skill.name,
-                    'rejection_reason': syntax_error,
-                }
+        return selection_result_payload(
+            status='ok',
+            skill_name=None,
+            selection_reason='owasp security audit requested but required arguments are missing',
+            message=f'OWASP security audit requires valid arguments: {syntax_error}.',
+            rejected_candidates=[
+                rejected_skill_candidate_payload(skill.name, str(syntax_error)),
             ],
-            'candidates': [],
-        }
+        )
 
     score, validation = score_skill_choice(skill, user_text, arguments)
     validation['reasons'].append('forced_owasp_security_audit_intent')
     record_skill_event(skill.name, 'selected')
-    return {
-        'status': 'ok',
-        'skill_name': skill.name,
-        'validation': validation,
-        'distance': 0.0,
-        'forced': True,
-        'candidates': [
-            {
-                'skill_name': skill.name,
-                'score': score,
-                'distance': 0.0,
-                'forced': True,
-            }
+    return selection_result_payload(
+        status='ok',
+        skill_name=skill.name,
+        validation=skill_validation_payload(validation),
+        distance=0.0,
+        forced=True,
+        candidates=[
+            skill_candidate_payload(skill.name, score=score, distance=0.0, forced=True),
         ],
-    }
+    )
 
 
 def skill_has_lexical_trigger(skill: Skill, intent: dict[str, Any]) -> bool:
@@ -300,41 +353,46 @@ def choose_skill_for_intent(
 
     candidates = retrieve_skill_candidates(skills_by_name, user_text, arguments, k=k)
     if not candidates:
-        return {
-            'status': 'ok',
-            'skill_name': None,
-            'selection_reason': 'no relevant skill candidates found',
-            'message': 'No relevant skill is available. Improvise a short procedure with normal tool discipline.',
-            'candidates': [],
-        }
+        return selection_result_payload(
+            status='ok',
+            skill_name=None,
+            selection_reason='no relevant skill candidates found',
+            message='No relevant skill is available. Improvise a short procedure with normal tool discipline.',
+        )
 
     ranked: list[dict[str, Any]] = []
     rejected: list[dict[str, Any]] = []
     intent = extract_intent(user_text)
     for skill, match in candidates:
         if skill.name == OWASP_SECURITY_REVIEW_SKILL and not is_explicit_owasp_security_audit_intent(intent):
-            rejected.append({
-                'skill_name': skill.name,
-                'distance': float(match.get('distance', 1e9)),
-                'rejection_reason': 'missing explicit OWASP/security audit intent',
-            })
+            rejected.append(
+                rejected_skill_candidate_payload(
+                    skill.name,
+                    'missing explicit OWASP/security audit intent',
+                    distance=float(match.get('distance', 1e9)),
+                )
+            )
             continue
 
         if skill.category == 'skills' and not is_explicit_skill_authoring_intent(intent):
-            rejected.append({
-                'skill_name': skill.name,
-                'distance': float(match.get('distance', 1e9)),
-                'rejection_reason': 'missing explicit skill-authoring intent',
-            })
+            rejected.append(
+                rejected_skill_candidate_payload(
+                    skill.name,
+                    'missing explicit skill-authoring intent',
+                    distance=float(match.get('distance', 1e9)),
+                )
+            )
             continue
 
         ok, syntax_error = validate_skill_syntax(skill, arguments)
         if not ok:
-            rejected.append({
-                'skill_name': skill.name,
-                'distance': float(match.get('distance', 1e9)),
-                'rejection_reason': syntax_error,
-            })
+            rejected.append(
+                rejected_skill_candidate_payload(
+                    skill.name,
+                    str(syntax_error),
+                    distance=float(match.get('distance', 1e9)),
+                )
+            )
             continue
 
         score, validation = score_skill_choice(skill, user_text, arguments)
@@ -348,51 +406,50 @@ def choose_skill_for_intent(
         })
 
     if not ranked:
-        return {
-            'status': 'ok',
-            'skill_name': None,
-            'selection_reason': 'no skill candidates passed validation',
-            'message': 'No relevant skill is available. Improvise a short procedure with normal tool discipline.',
-            'rejected_candidates': rejected[:5],
-            'candidates': [],
-        }
+        return selection_result_payload(
+            status='ok',
+            skill_name=None,
+            selection_reason='no skill candidates passed validation',
+            message='No relevant skill is available. Improvise a short procedure with normal tool discipline.',
+            rejected_candidates=rejected[:5],
+        )
 
     ranked.sort(key=lambda item: (-item['score'], item['distance']))
     best = ranked[0]
 
     if best['score'] < threshold:
-        return {
-            'status': 'ok',
-            'skill_name': None,
-            'selection_reason': 'best skill below threshold',
-            'message': 'No relevant skill is available. Improvise a short procedure with normal tool discipline.',
-            'best_candidate': {
-                'skill_name': best['skill'].name,
-                'score': best['score'],
-                'distance': best['distance'],
-            },
-            'candidates': [
-                {
-                    'skill_name': item['skill'].name,
-                    'score': item['score'],
-                    'distance': item['distance'],
-                }
+        return selection_result_payload(
+            status='ok',
+            skill_name=None,
+            selection_reason='best skill below threshold',
+            message='No relevant skill is available. Improvise a short procedure with normal tool discipline.',
+            best_candidate=skill_candidate_payload(
+                best['skill'].name,
+                score=best['score'],
+                distance=best['distance'],
+            ),
+            candidates=[
+                skill_candidate_payload(
+                    item['skill'].name,
+                    score=item['score'],
+                    distance=item['distance'],
+                )
                 for item in ranked[:5]
             ],
-        }
+        )
 
     record_skill_event(best['skill'].name, 'selected')
-    return {
-        'status': 'ok',
-        'skill_name': best['skill'].name,
-        'validation': best['validation'],
-        'distance': best['distance'],
-        'candidates': [
-            {
-                'skill_name': item['skill'].name,
-                'score': item['score'],
-                'distance': item['distance'],
-            }
+    return selection_result_payload(
+        status='ok',
+        skill_name=best['skill'].name,
+        validation=skill_validation_payload(best['validation']),
+        distance=best['distance'],
+        candidates=[
+            skill_candidate_payload(
+                item['skill'].name,
+                score=item['score'],
+                distance=item['distance'],
+            )
             for item in ranked[:5]
         ],
-    }
+    )

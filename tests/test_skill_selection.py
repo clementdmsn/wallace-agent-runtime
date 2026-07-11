@@ -88,7 +88,7 @@ def test_create_extensionless_file_does_not_select_skill_authoring_skill(monkeyp
     assert result['skill_name'] is None
     assert result['selection_reason'] == 'no skill candidates passed validation'
     assert result['rejected_candidates'][0]['skill_name'] == 'create_new_skill'
-    assert result['rejected_candidates'][0]['rejection_reason'] == 'missing explicit skill-authoring intent'
+    assert result['rejected_candidates'][0]['reason'] == 'missing explicit skill-authoring intent'
 
 
 def test_request_skill_for_intent_returns_null_selection_without_loading_skill(monkeypatch):
@@ -534,7 +534,7 @@ def test_fix_security_issue_does_not_force_owasp_audit(monkeypatch):
     )
 
     assert result['status'] == 'ok'
-    assert result.get('forced') is None
+    assert result['forced'] is False
     assert result['skill_name'] != 'owasp_security_review'
 
 
@@ -555,7 +555,7 @@ def test_owasp_skill_is_rejected_without_explicit_security_audit_intent(monkeypa
     assert result['status'] == 'ok'
     assert result['skill_name'] is None
     assert result['selection_reason'] == 'no skill candidates passed validation'
-    assert result['rejected_candidates'][0]['rejection_reason'] == 'missing explicit OWASP/security audit intent'
+    assert result['rejected_candidates'][0]['reason'] == 'missing explicit OWASP/security audit intent'
 
 
 def test_question_intent_penalty_suppresses_skill_selection(monkeypatch):
@@ -657,7 +657,7 @@ def test_create_code_file_does_not_select_skill_authoring_skill(monkeypatch):
     assert result['status'] == 'ok'
     assert result['skill_name'] is None
     assert result['selection_reason'] == 'no skill candidates passed validation'
-    assert result['rejected_candidates'][0]['rejection_reason'] == 'missing explicit skill-authoring intent'
+    assert result['rejected_candidates'][0]['reason'] == 'missing explicit skill-authoring intent'
 
 
 def test_explicit_skill_creation_still_selects_skill_authoring_skill(monkeypatch):
