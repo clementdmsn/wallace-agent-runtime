@@ -217,16 +217,24 @@ Responsibilities:
 ## Contract Boundaries
 
 Contracts live in `contracts/` and define payload shapes for stable runtime
-boundaries such as tool results, runtime events, pending approvals, and web API
-responses. Producers validate at the boundary and then serialize to dictionaries
-only where legacy consumers or JSON responses still require that shape.
+boundaries such as tool results, runtime events, pending approvals, skill
+selection results, offline eval scenarios, run traces, and web API responses.
+Producers validate at the boundary and then serialize to dictionaries only
+where legacy consumers or JSON responses still require that shape.
+
+The API contract uses discriminated runtime event shapes, response
+discriminators, and explicit visible-message roles so `/api/state` cannot
+silently publish malformed runtime state.
 
 Validation failure handling is boundary-specific:
 
-- API and tool boundary failures become controlled error payloads.
+- API and tool boundary failures become controlled error payloads or HTTP API
+  error responses.
 - Trace validation failures remain nonfatal but observable through logging.
 - Offline eval scenario failures stop the eval run before execution.
-- Internal snapshot failures fail tests and `make quality`.
+- Internal snapshot failures fail tests and `make quality` unless the snapshot
+  is being exposed through an API boundary with an explicit controlled error
+  response.
 - Contract errors must not be caught and ignored without surfacing an explicit
   failure signal.
 

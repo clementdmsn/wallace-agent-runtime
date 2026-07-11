@@ -14,6 +14,7 @@
         ],
         "distance": 0.0,
         "forced": true,
+        "rejected_candidates": [],
         "skill_name": "owasp_security_review",
         "status": "ok",
         "validation": {
@@ -43,7 +44,8 @@
             "required_args_present",
             "forced_owasp_security_audit_intent"
           ],
-          "score": 25.6
+          "score": 25.6,
+          "valid": true
         }
       },
       "errors": [],
@@ -102,6 +104,7 @@
         ],
         "distance": 0.0,
         "forced": true,
+        "rejected_candidates": [],
         "skill_name": "owasp_security_review",
         "status": "ok",
         "validation": {
@@ -131,7 +134,8 @@
             "required_args_present",
             "forced_owasp_security_audit_intent"
           ],
-          "score": 25.6
+          "score": 25.6,
+          "valid": true
         }
       },
       "errors": [],
@@ -189,6 +193,7 @@
         ],
         "distance": 0.0,
         "forced": true,
+        "rejected_candidates": [],
         "skill_name": "owasp_security_review",
         "status": "ok",
         "validation": {
@@ -218,7 +223,8 @@
             "required_args_present",
             "forced_owasp_security_audit_intent"
           ],
-          "score": 25.6
+          "score": 25.6,
+          "valid": true
         }
       },
       "errors": [],
@@ -286,6 +292,7 @@
         ],
         "distance": 0.0,
         "forced": true,
+        "rejected_candidates": [],
         "skill_name": "owasp_security_review",
         "status": "ok",
         "validation": {
@@ -315,7 +322,8 @@
             "required_args_present",
             "forced_owasp_security_audit_intent"
           ],
-          "score": 25.6
+          "score": 25.6,
+          "valid": true
         }
       },
       "errors": [],
@@ -396,6 +404,7 @@
         ],
         "distance": 0.0,
         "forced": true,
+        "rejected_candidates": [],
         "skill_name": "owasp_security_review",
         "status": "ok",
         "validation": {
@@ -425,7 +434,8 @@
             "required_args_present",
             "forced_owasp_security_audit_intent"
           ],
-          "score": 25.6
+          "score": 25.6,
+          "valid": true
         }
       },
       "errors": [],
@@ -477,11 +487,14 @@
         "candidates": [
           {
             "distance": 0.1,
+            "forced": false,
             "score": 21.6,
             "skill_name": "code_explainer"
           }
         ],
         "distance": 0.1,
+        "forced": false,
+        "rejected_candidates": [],
         "skill_name": "code_explainer",
         "status": "ok",
         "validation": {
@@ -507,7 +520,8 @@
             "filetype_match",
             "required_args_present"
           ],
-          "score": 21.6
+          "score": 21.6,
+          "valid": true
         }
       },
       "errors": [],
@@ -574,11 +588,14 @@
         "candidates": [
           {
             "distance": 0.1,
+            "forced": false,
             "score": 21.6,
             "skill_name": "code_explainer"
           }
         ],
         "distance": 0.1,
+        "forced": false,
+        "rejected_candidates": [],
         "skill_name": "code_explainer",
         "status": "ok",
         "validation": {
@@ -608,7 +625,8 @@
             "filetype_match",
             "required_args_present"
           ],
-          "score": 21.6
+          "score": 21.6,
+          "valid": true
         }
       },
       "errors": [],
@@ -707,11 +725,14 @@
         "candidates": [
           {
             "distance": 0.1,
+            "forced": false,
             "score": 21.6,
             "skill_name": "code_explainer"
           }
         ],
         "distance": 0.1,
+        "forced": false,
+        "rejected_candidates": [],
         "skill_name": "code_explainer",
         "status": "ok",
         "validation": {
@@ -741,7 +762,8 @@
             "filetype_match",
             "required_args_present"
           ],
-          "score": 21.6
+          "score": 21.6,
+          "valid": true
         }
       },
       "errors": [],
@@ -841,11 +863,14 @@
         "candidates": [
           {
             "distance": 0.1,
+            "forced": false,
             "score": 22.2,
             "skill_name": "create_new_skill"
           }
         ],
         "distance": 0.1,
+        "forced": false,
+        "rejected_candidates": [],
         "skill_name": "create_new_skill",
         "status": "ok",
         "validation": {
@@ -853,7 +878,6 @@
             "action": "create",
             "args": {},
             "domain": "skills",
-            "filetype": null,
             "speech_act": "command",
             "text": "create a reusable skill for debugging functions",
             "tokens": [
@@ -872,7 +896,8 @@
             "domain_match",
             "required_args_present"
           ],
-          "score": 22.2
+          "score": 22.2,
+          "valid": true
         }
       },
       "errors": [],
@@ -915,17 +940,21 @@
       "choice": {
         "best_candidate": {
           "distance": 0.1,
+          "forced": false,
           "score": -2.8,
           "skill_name": "code_explainer"
         },
         "candidates": [
           {
             "distance": 0.1,
+            "forced": false,
             "score": -2.8,
             "skill_name": "code_explainer"
           }
         ],
+        "forced": false,
         "message": "No relevant skill is available. Improvise a short procedure with normal tool discipline.",
+        "rejected_candidates": [],
         "selection_reason": "best skill below threshold",
         "skill_name": null,
         "status": "ok"

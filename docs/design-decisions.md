@@ -46,13 +46,15 @@ Runtime contracts are boundary checks, not best-effort hints. Validation
 failures must be visible at the layer that owns the boundary:
 
 - API and tool boundary validation failures are converted into controlled error
-  responses or tool results.
+  responses or tool results, including `/api/state` validation failures caused
+  by malformed runtime state.
 - Trace validation failures are nonfatal, logged, and omitted from the trace
   stream rather than crashing the agent.
 - Offline eval scenario validation failures stop execution before any scenario
   runs.
 - Internal snapshot validation failures fail tests and development quality
-  checks.
+  checks unless they are intentionally surfaced through a controlled API error
+  response.
 - Contract validation errors are never silently discarded.
 
 ## Deterministic Agent Evals

@@ -31,8 +31,10 @@ For this short single-file audit, the expected tool order is:
 3. `search_owasp_reference` with a query based on concrete reviewed evidence.
 4. Final answer with findings that cite returned OWASP reference metadata.
 
-The compact sample trace is stored in
+The compact demo trace is stored in
 [`../examples/owasp-trace.json`](../examples/owasp-trace.json).
+It is a curated documentation artifact, not the raw JSONL format emitted by
+`agent/run_trace.py` when `WALLACE_RUN_TRACE` is enabled.
 
 ## Policy Rule
 

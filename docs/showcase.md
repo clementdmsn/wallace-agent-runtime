@@ -53,8 +53,8 @@ python -m evals.offline_runner --json
 
 For the strongest guided demo, use the OWASP audit walkthrough in
 [`docs/demo/owasp-audit.md`](docs/demo/owasp-audit.md). It includes the prompt,
-expected skill selection, policy enforcement points, a sample trace, and a
-sample final report.
+expected skill selection, policy enforcement points, a compact demo trace, and
+a sample final report.
 
 ### 1. Whole-File Code Explanation
 
