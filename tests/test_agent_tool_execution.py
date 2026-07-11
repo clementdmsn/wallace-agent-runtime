@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import threading
 
+import pytest
+
 from agent import agent_tool_execution
 from contracts.events import PendingApproval
 from tools.tool_registry import Tool
@@ -66,6 +68,27 @@ def test_execute_tool_call_records_invalid_json_as_tool_error():
     hidden = agent.messages[0]
     assert hidden['role'] == 'tool'
     assert json.loads(hidden['content'])['status'] == 'error'
+
+
+@pytest.mark.parametrize('constant', ['NaN', 'Infinity', '-Infinity'])
+def test_execute_tool_call_rejects_non_finite_json_arguments(monkeypatch, constant: str):
+    agent = FakeAgent()
+    called = []
+
+    monkeypatch.setitem(
+        agent_tool_execution.TOOLS,
+        'fake_tool',
+        Tool('fake_tool', lambda value: called.append(value) or {'status': 'ok'}),
+    )
+
+    ok = agent_tool_execution.execute_tool_call(agent, tool_call('fake_tool', f'{{"value": {constant}}}'), 7)
+
+    assert ok is True
+    assert called == []
+    assert agent.tool_events[0]['result']['status'] == 'error'
+    assert f'invalid JSON constant: {constant}' in agent.tool_events[0]['result']['error']
+    hidden = json.loads(agent.messages[0]['content'])
+    assert hidden['status'] == 'error'
 
 
 def test_execute_tool_call_records_unknown_tool_error():

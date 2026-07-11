@@ -30,6 +30,10 @@ class ToolExecutionResult:
     result: object
 
 
+def reject_json_constant(value: str) -> None:
+    raise ValueError(f'invalid JSON constant: {value}')
+
+
 def result_payload(name: str, result: object, kind: str) -> dict[str, Any]:
     if not isinstance(result, dict):
         return {kind: name, 'status': 'ok', 'text': str(result)}
@@ -116,7 +120,7 @@ def parse_tool_call(tool_call: dict[str, Any]) -> ParsedToolCall:
 
 def parse_tool_args(raw_args: str) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
     try:
-        args = json.loads(raw_args)
+        args = json.loads(raw_args, parse_constant=reject_json_constant)
         if not isinstance(args, dict):
             raise ValueError('call arguments must decode to an object')
     except Exception as exc:
