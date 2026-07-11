@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import time
 import uuid
@@ -9,6 +10,9 @@ from pathlib import Path
 from typing import Any
 
 from config import SETTINGS
+from contracts.traces import RunTraceEvent
+
+logger = logging.getLogger(__name__)
 
 SENSITIVE_KEYS = {
     'api_key',
@@ -59,6 +63,7 @@ class RunTrace:
         self.pid = os.getpid()
         self.trace_id = f'{run_id:06d}-{self.created_ns}-{uuid.uuid4().hex[:8]}'
         self.payloads_enabled = SETTINGS.run_trace_payloads
+        self.error_count = 0
         wall_time = time.strftime('%Y%m%dT%H%M%S%z', time.localtime(self.created_ns / 1_000_000_000))
         self.path = trace_dir / f'run-{run_id:06d}-{wall_time}-{self.created_ns}-{self.pid}-{self.trace_id[-8:]}.jsonl'
 
@@ -84,15 +89,23 @@ class RunTrace:
         return deepcopy(_redact(_json_safe(value)))
 
     def record(self, event: str, **fields: Any) -> None:
-        line = {
-            'ts': time.strftime('%Y-%m-%dT%H:%M:%S%z'),
-            'event': event,
-            'run_id': self.run_id,
-            'trace_id': self.trace_id,
-            **_json_safe(fields),
-        }
+        safe_fields = _json_safe(fields)
+        try:
+            line = RunTraceEvent(
+                ts=time.strftime('%Y-%m-%dT%H:%M:%S%z'),
+                event=event,
+                run_id=self.run_id,
+                trace_id=self.trace_id,
+                fields=safe_fields,
+            ).to_payload()
+        except Exception as exc:
+            self.error_count += 1
+            logger.warning('invalid run trace event skipped: %s', exc)
+            return
+
         try:
             with self.path.open('a', encoding='utf-8') as handle:
                 handle.write(json.dumps(line, ensure_ascii=False, sort_keys=True) + '\n')
         except Exception:
-            pass
+            self.error_count += 1
+            logger.warning('failed to write run trace event', exc_info=True)
