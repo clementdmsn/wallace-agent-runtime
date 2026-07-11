@@ -165,6 +165,25 @@ def test_state_returns_controlled_error_for_invalid_runtime_events(caplog):
     assert 'runtime state contract validation failed' in caplog.text
 
 
+def test_state_returns_controlled_error_for_invalid_pending_approval(caplog):
+    client = web_app.app.test_client()
+    with web_app.agent.lock:
+        web_app.agent.pending_approval = {
+            'tool': 'curl_url',
+            'approval_id': 'curl:docs.python.org:123',
+        }
+
+    with caplog.at_level('ERROR', logger='web.web_app'):
+        response = client.get('/api/state')
+
+    assert response.status_code == 500
+    assert response.get_json() == {
+        'ok': False,
+        'error': 'Runtime state failed contract validation.',
+    }
+    assert 'runtime state contract validation failed' in caplog.text
+
+
 def test_state_includes_pending_curl_approval():
     client = web_app.app.test_client()
     with web_app.agent.lock:

@@ -149,17 +149,17 @@ def create_app(
 
     @app.get("/api/state")
     def get_state() -> Any:
-        with runtime.agent.lock:
-            messages = [dict(message) for message in runtime.agent.messages]
-            tool_events = [dict(event) for event in runtime.agent.tool_events]
-            runtime_metrics = runtime.agent.metrics.snapshot()
-            last_error = runtime.agent.last_error
-            is_generating = runtime.agent.is_generating
-            pending_approval = runtime.agent.snapshot_pending_approval()
-            active_skill_name = runtime.agent.active_skill_name
-            active_skill_policy = dict(runtime.agent.active_skill_policy or {})
-
         try:
+            with runtime.agent.lock:
+                messages = [dict(message) for message in runtime.agent.messages]
+                tool_events = [dict(event) for event in runtime.agent.tool_events]
+                runtime_metrics = runtime.agent.metrics.snapshot()
+                last_error = runtime.agent.last_error
+                is_generating = runtime.agent.is_generating
+                pending_approval = runtime.agent.snapshot_pending_approval()
+                active_skill_name = runtime.agent.active_skill_name
+                active_skill_policy = dict(runtime.agent.active_skill_policy or {})
+
             state = RuntimeStateResponse(
                 messages=visible_messages(messages),
                 tool_events=serialize_tool_events(tool_events),
