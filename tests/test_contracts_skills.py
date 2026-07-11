@@ -10,6 +10,7 @@ from contracts.skills import (
     RejectedSkillCandidate,
     ResolvedTaskType,
     SkillCandidate,
+    SkillSelectionResult,
     SkillValidation,
 )
 
@@ -250,3 +251,123 @@ def test_rejected_skill_candidate_rejects_negative_distance():
             reason='below threshold',
             distance=-1,
         )
+
+
+def test_skill_selection_result_serializes_nested_selection_payload():
+    result = SkillSelectionResult(
+        status='ok',
+        skill_name='code_explainer',
+        selection_reason='best candidate above threshold',
+        message='Selected code_explainer.',
+        validation={
+            'valid': True,
+            'score': 9.0,
+            'reasons': ['tag_match'],
+        },
+        distance=0.25,
+        forced=True,
+        best_candidate={
+            'skill_name': 'code_explainer',
+            'score': 9.0,
+            'distance': 0.25,
+            'priority': 3,
+        },
+        candidates=[
+            SkillCandidate(skill_name='code_explainer', score=9.0, distance=0.25),
+            {
+                'skill_name': 'owasp_security_review',
+                'score': 4.0,
+                'distance': 1.2,
+            },
+        ],
+        rejected_candidates=[
+            {
+                'skill_name': 'create_new_skill',
+                'reason': 'below threshold',
+                'score': 2.0,
+                'distance': 2.2,
+            }
+        ],
+    )
+
+    assert result.to_payload() == {
+        'status': 'ok',
+        'skill_name': 'code_explainer',
+        'selection_reason': 'best candidate above threshold',
+        'message': 'Selected code_explainer.',
+        'validation': {
+            'valid': True,
+            'score': 9.0,
+            'reasons': ['tag_match'],
+        },
+        'distance': 0.25,
+        'forced': True,
+        'best_candidate': {
+            'skill_name': 'code_explainer',
+            'score': 9.0,
+            'distance': 0.25,
+            'priority': 3,
+            'forced': False,
+        },
+        'candidates': [
+            {
+                'skill_name': 'code_explainer',
+                'score': 9.0,
+                'distance': 0.25,
+                'forced': False,
+            },
+            {
+                'skill_name': 'owasp_security_review',
+                'score': 4.0,
+                'distance': 1.2,
+                'forced': False,
+            },
+        ],
+        'rejected_candidates': [
+            {
+                'skill_name': 'create_new_skill',
+                'reason': 'below threshold',
+                'score': 2.0,
+                'distance': 2.2,
+            }
+        ],
+    }
+
+
+def test_skill_selection_result_uses_safe_defaults():
+    result = SkillSelectionResult(status='error')
+
+    assert result.to_payload() == {
+        'status': 'error',
+        'forced': False,
+        'candidates': [],
+        'rejected_candidates': [],
+    }
+
+
+def test_skill_selection_result_default_lists_are_not_shared():
+    first = SkillSelectionResult(status='ok')
+    second = SkillSelectionResult(status='ok')
+
+    first.candidates.append(SkillCandidate(skill_name='code_explainer'))
+    first.rejected_candidates.append(
+        RejectedSkillCandidate(skill_name='owasp_security_review', reason='below threshold')
+    )
+
+    assert second.candidates == []
+    assert second.rejected_candidates == []
+
+
+def test_skill_selection_result_rejects_unknown_status():
+    with pytest.raises(ValidationError):
+        SkillSelectionResult(status='pending')
+
+
+def test_skill_selection_result_rejects_negative_distance():
+    with pytest.raises(ValidationError):
+        SkillSelectionResult(status='ok', distance=-0.01)
+
+
+def test_skill_selection_result_rejects_unknown_fields():
+    with pytest.raises(ValidationError):
+        SkillSelectionResult(status='ok', unexpected='value')

@@ -5,7 +5,7 @@ from typing import Self
 
 from pydantic import Field, model_validator
 
-from contracts.base import ContractModel
+from contracts.base import ContractModel, ResultStatus
 from contracts.types import JsonValue
 
 
@@ -46,6 +46,19 @@ class RejectedSkillCandidate(ContractModel):
     reason: str = Field(min_length=1)
     score: float | None = None
     distance: float | None = Field(default=None, ge=0)
+
+
+class SkillSelectionResult(ContractModel):
+    status: ResultStatus
+    skill_name: str | None = None
+    selection_reason: str | None = None
+    message: str | None = None
+    validation: SkillValidation | None = None
+    distance: float | None = Field(default=None, ge=0)
+    forced: bool = False
+    best_candidate: SkillCandidate | None = None
+    candidates: list[SkillCandidate] = Field(default_factory=list)
+    rejected_candidates: list[RejectedSkillCandidate] = Field(default_factory=list)
 
 
 class ExecutionGuidance(ContractModel):
