@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from openai import OpenAI
-import logging
 import os
 import threading
 from typing import Any
@@ -54,8 +53,6 @@ from agent.skill_selection import (
 from contracts.events import SkillPolicyEvent, SkillSelectionEvent, SkillSelectionEventStatus
 from config import SETTINGS
 from skills.skills import record_skill_event, request_skill_for_intent
-
-logger = logging.getLogger(__name__)
 
 
 def skill_selection_event_status(value: object) -> SkillSelectionEventStatus:
@@ -110,6 +107,9 @@ class Agent:
 
     def _record_skill_event(self, skill_name: str, event: str) -> None:
         record_skill_event(skill_name, event)
+
+    def _start_run_trace(self, run_id: int) -> RunTrace:
+        return RunTrace.start(run_id)
 
     def _is_current_run(self, run_id: int) -> bool:
         return run_id == self.run_id
