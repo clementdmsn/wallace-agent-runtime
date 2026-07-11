@@ -40,9 +40,9 @@ class RuntimeStateResponse(ContractModel):
 
 
 class ApiOkResponse(ContractModel):
-    ok: bool = True
+    ok: Literal[True] = True
 
 
 class ApiErrorResponse(ContractModel):
-    ok: bool = False
+    ok: Literal[False] = False
     error: str

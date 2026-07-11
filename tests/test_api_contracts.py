@@ -164,6 +164,11 @@ def test_api_ok_response_serializes_success_flag():
     assert ApiOkResponse().to_payload() == {'ok': True}
 
 
+def test_api_ok_response_rejects_false_discriminator():
+    with pytest.raises(ValidationError):
+        ApiOkResponse(ok=False)
+
+
 def test_api_error_response_serializes_error_message():
     response = ApiErrorResponse(error='Empty message')
 
@@ -171,3 +176,8 @@ def test_api_error_response_serializes_error_message():
         'ok': False,
         'error': 'Empty message',
     }
+
+
+def test_api_error_response_rejects_true_discriminator():
+    with pytest.raises(ValidationError):
+        ApiErrorResponse(ok=True, error='Empty message')
