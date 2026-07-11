@@ -2,7 +2,7 @@ PYTHON ?= venv/bin/python
 PIP ?= venv/bin/pip
 SYSTEM_PYTHON ?= python3
 
-.PHONY: install install-dev run test test-coverage lint check eval-offline quality
+.PHONY: install install-dev run test test-coverage lint typecheck-contracts check eval-offline quality
 
 venv/bin/python:
 	$(SYSTEM_PYTHON) -m venv venv
@@ -28,6 +28,9 @@ test-coverage:
 lint:
 	$(PYTHON) -m ruff check .
 
+typecheck-contracts:
+	$(PYTHON) -m pyright
+
 check:
 	$(PYTHON) -m compileall -q main.py config.py sandbox.py agent skills tools utils web scripts system_prompt tests
 	node --check web/app.js
@@ -36,4 +39,4 @@ check:
 eval-offline:
 	$(PYTHON) -m evals.offline_runner
 
-quality: check lint test-coverage eval-offline
+quality: check lint typecheck-contracts test-coverage eval-offline

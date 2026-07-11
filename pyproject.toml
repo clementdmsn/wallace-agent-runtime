@@ -11,6 +11,15 @@ extend-exclude = [
 [tool.ruff.lint]
 select = ["E9", "F63", "F7", "F82", "F401", "B"]
 
+[tool.pyright]
+include = [
+  "contracts",
+]
+pythonVersion = "3.11"
+typeCheckingMode = "basic"
+venv = "venv"
+venvPath = "."
+
 [tool.coverage.run]
 source = [
   "agent",
