@@ -4,6 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from contracts.base import ContractModel, ResultStatus
+from contracts.types import JsonValue
 
 
 class DemoContract(ContractModel):
@@ -14,6 +15,10 @@ class DemoContract(ContractModel):
 
 class DemoStatusContract(ContractModel):
     status: ResultStatus
+
+
+class DemoJsonContract(ContractModel):
+    payload: dict[str, JsonValue]
 
 
 def test_contract_model_rejects_unknown_fields():
@@ -63,3 +68,29 @@ def test_result_status_serializes_enum_values():
 def test_result_status_rejects_unknown_values():
     with pytest.raises(ValidationError):
         DemoStatusContract(status='pending')
+
+
+def test_json_value_accepts_nested_json_payloads():
+    contract = DemoJsonContract(
+        payload={
+            'string': 'value',
+            'integer': 1,
+            'float': 1.5,
+            'boolean': True,
+            'null': None,
+            'array': ['item', 2, False],
+            'object': {'nested': 'value'},
+        }
+    )
+
+    assert contract.to_payload() == {
+        'payload': {
+            'string': 'value',
+            'integer': 1,
+            'float': 1.5,
+            'boolean': True,
+            'null': None,
+            'array': ['item', 2, False],
+            'object': {'nested': 'value'},
+        }
+    }

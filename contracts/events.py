@@ -1,17 +1,18 @@
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Literal
 
 from pydantic import Field
 
 from contracts.base import ContractModel, ResultStatus
+from contracts.types import JsonValue
 
 
 class ToolEvent(ContractModel):
     id: str = ''
     kind: str
-    args: dict[str, Any] = Field(default_factory=dict)
-    result: Any | None = None
+    args: dict[str, JsonValue] = Field(default_factory=dict)
+    result: JsonValue = None
     tool: str | None = None
     status: str | None = None
     error: str | None = None
@@ -23,7 +24,7 @@ class SkillSelectionEvent(ContractModel):
     kind: Literal['skill_selection']
     status: ResultStatus | str
     skill_name: str | None = None
-    selection: dict[str, Any] | None = None
+    selection: dict[str, JsonValue] | None = None
     error: str | None = None
 
 
@@ -38,7 +39,7 @@ class SkillPolicyEvent(ContractModel):
 class PendingApproval(ContractModel):
     tool: str
     call_id: str = ''
-    args: dict[str, Any] = Field(default_factory=dict)
+    args: dict[str, JsonValue] = Field(default_factory=dict)
     approval_id: str
     domain: str
     url: str | None = None
