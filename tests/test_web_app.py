@@ -526,6 +526,46 @@ def test_curl_approval_updates_pending_for_redirect_domain_without_resuming(monk
     assert runtime.agent.last_error == 'Waiting for user approval.'
 
 
+def test_curl_approval_rejects_invalid_redirect_approval_result(monkeypatch, caplog):
+    runtime = web_app.WallaceRuntime(web_app.Agent())
+    pending = {
+        'tool': 'curl_url',
+        'call_id': 'call-1',
+        'args': {'url': 'https://docs.python.org/3/'},
+        'approval_id': 'curl:docs.python.org:123',
+        'domain': 'docs.python.org',
+        'url': 'https://docs.python.org/3/',
+    }
+    runtime.agent.pending_approval = dict(pending)
+    resumed = []
+    monkeypatch.setattr(web_app, 'add_domain_to_whitelist', lambda domain: {'status': 'ok'})
+    monkeypatch.setitem(
+        web_app.TOOLS,
+        'curl_url',
+        Tool('curl_url', lambda url: {'status': 'approval_required', 'url': 'https://cdn.example/docs'}),
+    )
+    runtime.resume_with_resolved_tool_result = (
+        lambda received_pending, tool_result, approval_id:
+        resumed.append((received_pending, tool_result, approval_id)) or True
+    )
+    client = web_app.create_app(runtime).test_client()
+
+    with caplog.at_level('ERROR', logger='web.web_app'):
+        response = client.post(
+            '/api/curl-approvals',
+            json={'approval_id': 'curl:docs.python.org:123', 'action': 'approve'},
+        )
+
+    assert response.status_code == 500
+    assert response.get_json() == {
+        'ok': False,
+        'error': 'Curl approval result failed contract validation.',
+    }
+    assert resumed == []
+    assert runtime.agent.pending_approval == pending
+    assert 'curl approval tool result contract validation failed' in caplog.text
+
+
 def test_curl_approval_deny_appends_denial_and_resumes():
     runtime = web_app.WallaceRuntime(web_app.Agent())
     pending = {

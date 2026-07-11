@@ -9,7 +9,7 @@ from flask import Flask, jsonify, request, send_from_directory
 from pydantic import ValidationError
 
 from agent.agent import Agent
-from agent.agent_tool_execution import append_resolved_tool_result
+from agent.agent_tool_execution import append_resolved_tool_result, validate_registered_tool_result
 from config import SETTINGS, env_bool
 from contracts.api import ApiErrorResponse, RuntimeStateResponse
 from tools.curl_tool import add_domain_to_whitelist
@@ -215,6 +215,15 @@ def create_app(
             if tool is None:
                 return jsonify({"ok": False, "error": "Pending tool is no longer registered"}), 500
             raw_tool_result = tool.func(**dict(pending.get("args") or {}))
+            try:
+                raw_tool_result = validate_registered_tool_result(
+                    str(pending.get("tool") or "curl_url"),
+                    raw_tool_result,
+                )
+            except ValidationError:
+                logger.exception("curl approval tool result contract validation failed")
+                error = ApiErrorResponse(error="Curl approval result failed contract validation.")
+                return jsonify(error.to_payload()), 500
             if isinstance(raw_tool_result, dict) and raw_tool_result.get("status") == "approval_required":
                 replaced = runtime.agent.replace_pending_approval(
                     approval_id or None,
