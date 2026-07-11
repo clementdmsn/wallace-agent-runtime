@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import json
+
+import pytest
+
 from evals.offline_runner import (
     DEFAULT_SCENARIO_PATH,
     load_scenarios,
@@ -23,7 +27,7 @@ def test_offline_eval_reports_failed_skill_contract():
         'name': 'wrong_expected_skill',
         'prompt': 'Explain auth.py',
         'arguments': {'path': 'auth.py'},
-        'expected_skill': 'missing_skill',
+        'expected_skill': 'other_explainer',
         'candidate_matches': [{'skill_name': 'code_explainer', 'distance': 0.1}],
         'skills': [
             {
@@ -43,6 +47,24 @@ def test_offline_eval_reports_failed_skill_contract():
                 },
                 'tools_required': ['summarize_code_file'],
                 'default_score': 0.7,
+            },
+            {
+                'name': 'other_explainer',
+                'description': 'Another code explanation skill.',
+                'category': 'code',
+                'tags': ['explain', 'code', 'python'],
+                'supported_actions': ['summarize'],
+                'supported_domains': ['code'],
+                'supported_filetypes': ['py'],
+                'required_args': ['path'],
+                'parameters': {
+                    'type': 'object',
+                    'properties': {'path': {'type': 'string'}},
+                    'required': ['path'],
+                    'additionalProperties': False,
+                },
+                'tools_required': ['summarize_code_file'],
+                'default_score': 0.4,
             }
         ],
     }
@@ -50,7 +72,36 @@ def test_offline_eval_reports_failed_skill_contract():
     result = run_scenario(scenario)
 
     assert result['status'] == 'fail'
-    assert "selected skill: expected 'missing_skill', got 'code_explainer'" in result['errors'][0]
+    assert "selected skill: expected 'other_explainer', got 'code_explainer'" in result['errors'][0]
+
+
+def test_offline_eval_load_rejects_invalid_document(tmp_path):
+    scenario_path = tmp_path / 'bad_eval.json'
+    scenario_path.write_text(
+        json.dumps(
+            {
+                'schema_version': 1,
+                'scenarios': [
+                    {
+                        'name': 'bad_candidate_reference',
+                        'prompt': 'Explain auth.py',
+                        'expected_skill': 'code_explainer',
+                        'candidate_matches': [{'skill_name': 'missing_skill', 'distance': 0.1}],
+                        'skills': [
+                            {
+                                'name': 'code_explainer',
+                                'description': 'Explain code files.',
+                            }
+                        ],
+                    }
+                ],
+            }
+        ),
+        encoding='utf-8',
+    )
+
+    with pytest.raises(ValueError, match='candidate_matches reference unknown skill fixtures'):
+        load_scenarios(scenario_path)
 
 
 def test_markdown_report_summarizes_pass_and_failure():
