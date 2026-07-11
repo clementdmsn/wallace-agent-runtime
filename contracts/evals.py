@@ -88,6 +88,19 @@ class OfflineEvalScenario(ContractModel):
         if len(unique_skill_names) != len(skill_names):
             raise ValueError('skill fixture names must be unique within a scenario')
 
+        if self.expected_skill is None:
+            ignored_fields = []
+            if self.expected_resolved_task_type is not None:
+                ignored_fields.append('expected_resolved_task_type')
+            if self.must_recommend_tools:
+                ignored_fields.append('must_recommend_tools')
+            if self.must_allow_tools:
+                ignored_fields.append('must_allow_tools')
+            if ignored_fields:
+                raise ValueError(
+                    'skill-policy expectations require expected_skill: '
+                    f'{", ".join(ignored_fields)}'
+                )
         if self.expected_skill is not None and self.expected_skill not in unique_skill_names:
             raise ValueError(f'expected_skill references unknown skill fixture: {self.expected_skill}')
 

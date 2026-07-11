@@ -136,6 +136,33 @@ def test_offline_eval_scenario_rejects_unknown_expected_skill():
         OfflineEvalDocument(**payload)
 
 
+@pytest.mark.parametrize(
+    ('field_name', 'replacement'),
+    [
+        ('expected_resolved_task_type', 'whole_file_code_overview'),
+        ('must_recommend_tools', ['summarize_code_file']),
+        ('must_allow_tools', ['summarize_code_file']),
+    ],
+)
+def test_offline_eval_scenario_rejects_skill_policy_expectations_without_expected_skill(
+    field_name: str,
+    replacement: object,
+):
+    payload = valid_document_payload()
+    scenarios = payload['scenarios']
+    assert isinstance(scenarios, list)
+    scenario = scenarios[0]
+    assert isinstance(scenario, dict)
+    scenario['expected_skill'] = None
+    scenario.pop('expected_resolved_task_type')
+    scenario['must_recommend_tools'] = []
+    scenario['must_allow_tools'] = []
+    scenario[field_name] = replacement
+
+    with pytest.raises(ValidationError, match='skill-policy expectations require expected_skill'):
+        OfflineEvalDocument(**payload)
+
+
 def test_offline_eval_scenario_rejects_unknown_candidate_skill():
     payload = valid_document_payload()
     scenarios = payload['scenarios']
