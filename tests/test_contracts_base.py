@@ -26,6 +26,13 @@ def test_contract_model_rejects_unknown_fields():
         DemoContract(name='demo', count=1, unexpected=True)
 
 
+def test_contract_validation_errors_are_not_silently_discarded():
+    with pytest.raises(ValidationError) as exc_info:
+        DemoContract(name='demo', count='not-an-int')
+
+    assert exc_info.value.errors()[0]['loc'] == ('count',)
+
+
 def test_contract_model_validates_assignment():
     contract = DemoContract(name='demo', count=1)
 

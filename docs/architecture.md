@@ -214,6 +214,22 @@ Responsibilities:
 - project-owned skill metadata/procedure paths
 - sandbox-owned skill index paths
 
+## Contract Boundaries
+
+Contracts live in `contracts/` and define payload shapes for stable runtime
+boundaries such as tool results, runtime events, pending approvals, and web API
+responses. Producers validate at the boundary and then serialize to dictionaries
+only where legacy consumers or JSON responses still require that shape.
+
+Validation failure handling is boundary-specific:
+
+- API and tool boundary failures become controlled error payloads.
+- Trace validation failures remain nonfatal but observable through logging.
+- Offline eval scenario failures stop the eval run before execution.
+- Internal snapshot failures fail tests and `make quality`.
+- Contract errors must not be caught and ignored without surfacing an explicit
+  failure signal.
+
 ## Tests
 
 Project commands:

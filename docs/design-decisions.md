@@ -40,6 +40,21 @@ Wallace enforces critical workflow rules outside the model:
 This design treats the model as an untrusted planner whose tool choices must be
 validated by runtime code.
 
+## Contract Validation Failure Policy
+
+Runtime contracts are boundary checks, not best-effort hints. Validation
+failures must be visible at the layer that owns the boundary:
+
+- API and tool boundary validation failures are converted into controlled error
+  responses or tool results.
+- Trace validation failures are nonfatal, logged, and omitted from the trace
+  stream rather than crashing the agent.
+- Offline eval scenario validation failures stop execution before any scenario
+  runs.
+- Internal snapshot validation failures fail tests and development quality
+  checks.
+- Contract validation errors are never silently discarded.
+
 ## Deterministic Agent Evals
 
 Offline evals exercise skill selection, execution guidance, and policy checks
