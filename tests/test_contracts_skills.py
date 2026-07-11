@@ -7,7 +7,10 @@ from contracts.skills import (
     ExecutionGuidance,
     ForbiddenToolCall,
     RecommendedToolCall,
+    RejectedSkillCandidate,
     ResolvedTaskType,
+    SkillCandidate,
+    SkillValidation,
 )
 
 
@@ -143,3 +146,107 @@ def test_execution_guidance_allows_repeated_recommendations_with_different_argum
 def test_execution_guidance_rejects_unknown_resolved_task_type():
     with pytest.raises(ValidationError):
         ExecutionGuidance(resolved_task_type='unknown_task_type')
+
+
+def test_skill_validation_serializes_valid_payload():
+    validation = SkillValidation(
+        valid=True,
+        score=8.5,
+        reasons=['tag_match', 'filetype_match'],
+    )
+
+    assert validation.to_payload() == {
+        'valid': True,
+        'score': 8.5,
+        'reasons': ['tag_match', 'filetype_match'],
+    }
+
+
+def test_skill_validation_uses_safe_reason_defaults():
+    first = SkillValidation(valid=True)
+    second = SkillValidation(valid=False)
+
+    first.reasons.append('matched')
+
+    assert second.reasons == []
+    assert second.to_payload() == {
+        'valid': False,
+        'reasons': [],
+    }
+
+
+def test_skill_validation_rejects_unknown_fields():
+    with pytest.raises(ValidationError):
+        SkillValidation(valid=True, unexpected='value')
+
+
+def test_skill_candidate_serializes_ranking_metadata():
+    candidate = SkillCandidate(
+        skill_name='code_explainer',
+        score=9.25,
+        distance=0.12,
+        priority=5,
+        forced=True,
+    )
+
+    assert candidate.to_payload() == {
+        'skill_name': 'code_explainer',
+        'score': 9.25,
+        'distance': 0.12,
+        'priority': 5,
+        'forced': True,
+    }
+
+
+def test_skill_candidate_uses_default_forced_flag():
+    candidate = SkillCandidate(skill_name='code_explainer')
+
+    assert candidate.to_payload() == {
+        'skill_name': 'code_explainer',
+        'forced': False,
+    }
+
+
+def test_skill_candidate_rejects_empty_skill_name():
+    with pytest.raises(ValidationError):
+        SkillCandidate(skill_name='')
+
+
+def test_skill_candidate_rejects_negative_distance():
+    with pytest.raises(ValidationError):
+        SkillCandidate(skill_name='code_explainer', distance=-0.1)
+
+
+def test_skill_candidate_rejects_unknown_fields():
+    with pytest.raises(ValidationError):
+        SkillCandidate(skill_name='code_explainer', unexpected='value')
+
+
+def test_rejected_skill_candidate_serializes_rejection_reason():
+    candidate = RejectedSkillCandidate(
+        skill_name='owasp_security_review',
+        reason='missing required path',
+        score=4.0,
+        distance=1.5,
+    )
+
+    assert candidate.to_payload() == {
+        'skill_name': 'owasp_security_review',
+        'reason': 'missing required path',
+        'score': 4.0,
+        'distance': 1.5,
+    }
+
+
+def test_rejected_skill_candidate_rejects_empty_reason():
+    with pytest.raises(ValidationError):
+        RejectedSkillCandidate(skill_name='code_explainer', reason='')
+
+
+def test_rejected_skill_candidate_rejects_negative_distance():
+    with pytest.raises(ValidationError):
+        RejectedSkillCandidate(
+            skill_name='code_explainer',
+            reason='below threshold',
+            distance=-1,
+        )

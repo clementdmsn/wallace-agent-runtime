@@ -27,6 +27,27 @@ class ForbiddenToolCall(ContractModel):
     reason: str = Field(min_length=1)
 
 
+class SkillValidation(ContractModel):
+    valid: bool
+    score: float | None = None
+    reasons: list[str] = Field(default_factory=list)
+
+
+class SkillCandidate(ContractModel):
+    skill_name: str = Field(min_length=1)
+    score: float | None = None
+    distance: float | None = Field(default=None, ge=0)
+    priority: int | None = None
+    forced: bool = False
+
+
+class RejectedSkillCandidate(ContractModel):
+    skill_name: str = Field(min_length=1)
+    reason: str = Field(min_length=1)
+    score: float | None = None
+    distance: float | None = Field(default=None, ge=0)
+
+
 class ExecutionGuidance(ContractModel):
     resolved_task_type: ResolvedTaskType
     recommended_tool_calls: list[RecommendedToolCall] = Field(default_factory=list)
