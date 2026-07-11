@@ -11,6 +11,11 @@ def test_tool_event_requires_kind():
         ToolEvent()
 
 
+def test_tool_event_rejects_unknown_kind():
+    with pytest.raises(ValidationError):
+        ToolEvent(kind='skill_selection')
+
+
 def test_tool_event_uses_safe_defaults():
     event = ToolEvent(kind='tool')
 
@@ -48,6 +53,11 @@ def test_tool_event_serializes_known_fields():
 def test_tool_event_rejects_unknown_fields():
     with pytest.raises(ValidationError):
         ToolEvent(kind='tool', unexpected='value')
+
+
+def test_tool_event_rejects_unsupported_status():
+    with pytest.raises(ValidationError):
+        ToolEvent(kind='tool', status='pending')
 
 
 def test_tool_event_args_default_is_not_shared():
@@ -94,9 +104,28 @@ def test_skill_selection_event_allows_error_payload():
     }
 
 
+def test_skill_selection_event_allows_unknown_payload():
+    event = SkillSelectionEvent(
+        kind='skill_selection',
+        status='unknown',
+        error='selection returned an unsupported status',
+    )
+
+    assert event.to_payload() == {
+        'kind': 'skill_selection',
+        'status': 'unknown',
+        'error': 'selection returned an unsupported status',
+    }
+
+
 def test_skill_selection_event_rejects_unknown_fields():
     with pytest.raises(ValidationError):
         SkillSelectionEvent(kind='skill_selection', status='ok', unexpected='value')
+
+
+def test_skill_selection_event_rejects_unsupported_status():
+    with pytest.raises(ValidationError):
+        SkillSelectionEvent(kind='skill_selection', status='approval_required')
 
 
 def test_skill_policy_event_requires_discriminator():
@@ -125,6 +154,11 @@ def test_skill_policy_event_serializes_known_fields():
 def test_skill_policy_event_rejects_unknown_fields():
     with pytest.raises(ValidationError):
         SkillPolicyEvent(kind='skill_policy', status='error', unexpected='value')
+
+
+def test_skill_policy_event_rejects_unsupported_status():
+    with pytest.raises(ValidationError):
+        SkillPolicyEvent(kind='skill_policy', status='ok')
 
 
 def test_pending_approval_requires_core_fields():

@@ -173,6 +173,21 @@ def test_call_model_handles_skill_selection_failure(monkeypatch):
     assert wallace.tool_events[0]['status'] == 'error'
 
 
+def test_call_model_records_unknown_skill_selection_status(monkeypatch):
+    monkeypatch.setattr(
+        agent_module,
+        'request_skill_for_intent',
+        lambda text: {'status': 'pending', 'skill_name': None, 'selection': {}},
+    )
+    wallace = agent_module.Agent()
+    seed_messages(wallace)
+    monkeypatch.setattr(wallace, '_call_model_once', lambda run_id: {'role': 'assistant', 'content': 'ok'})
+
+    assert wallace.call_model() == 'ok'
+    assert wallace.tool_events[0]['kind'] == 'skill_selection'
+    assert wallace.tool_events[0]['status'] == 'unknown'
+
+
 def test_call_model_once_records_api_failure():
     wallace = agent_module.Agent()
     seed_messages(wallace)
