@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Self
+from typing import Self, cast
 
 from pydantic import Field, model_validator
 
@@ -86,3 +86,40 @@ class ExecutionGuidance(ContractModel):
             raise ValueError(f'recommended tools must be allowed: {sorted(invalid_recommendations)}')
 
         return self
+
+
+class RequestedSkillResult(ContractModel):
+    status: ResultStatus
+    skill_name: str | None = None
+    arguments: dict[str, JsonValue] = Field(default_factory=dict)
+    selection: SkillSelectionResult | None = None
+    guidance: ExecutionGuidance | None = None
+
+    description: str | None = None
+    procedure: str | None = None
+    metadata_path: str | None = None
+    procedure_path: str | None = None
+    tools_required: list[str] = Field(default_factory=list)
+    preconditions: list[str] = Field(default_factory=list)
+    when_to_use: list[str] = Field(default_factory=list)
+    when_not_to_use: list[str] = Field(default_factory=list)
+    exclusions: list[str] = Field(default_factory=list)
+    message: str | None = None
+
+    def to_payload(self) -> dict[str, JsonValue]:
+        payload = super().to_payload()
+
+        if self.skill_name is None:
+            payload['skill_name'] = None
+
+        if self.selection is not None:
+            selection = self.selection.to_payload()
+            if self.selection.skill_name is None:
+                selection['skill_name'] = None
+            payload['selection'] = selection
+
+        if self.guidance is not None:
+            payload.pop('guidance', None)
+            payload.update(self.guidance.to_payload())
+
+        return cast(dict[str, JsonValue], payload)
