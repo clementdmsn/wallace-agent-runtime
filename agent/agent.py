@@ -11,7 +11,6 @@ from agent.agent_metrics import AgentMetrics
 from agent.agent_skill_policy import (
     reset_skill_state,
     set_skill_state_from_selection,
-    validate_final_response_against_skill_policy,
 )
 from agent.agent_tool_execution import execute_tool_call
 from agent.final_response_policy import handle_skill_policy_blocked_final_response
@@ -42,6 +41,7 @@ from agent.runtime_state import (
     snapshot_tool_events,
     trace,
 )
+from agent.run_loop import call_model
 from agent.skill_selection import (
     append_skill_policy_event,
     append_skill_selection_event,
@@ -265,74 +265,4 @@ class Agent:
         return handle_skill_policy_blocked_final_response(self, run_id, content, policy_error)
 
     def call_model(self, run_id: int | None = None):
-        if run_id is None:
-            run_id = self._start_generation()
-        if run_id is None:
-            return None
-
-        try:
-            selected_skill = self._select_skill_for_current_request()
-            if not self._configure_request_skill(run_id, selected_skill):
-                return None
-
-            for turn_index in range(0, self.MAX_AUTO_TURNS):
-                with self.lock:
-                    if not self._is_current_run(run_id):
-                        return None
-                    self.loop_turn = turn_index
-
-                response = self._call_model_once(run_id)
-                if response is None:
-                    return None
-
-                content = str(response.get('content') or '').strip()
-                tool_calls = response.get('tool_calls') or []
-
-                if tool_calls:
-                    for tool_call in tool_calls:
-                        if not self._execute_callable(tool_call, run_id):
-                            return None
-                    continue
-
-                if content == self.DONE:
-                    with self.lock:
-                        if not self._is_current_run(run_id):
-                            return None
-                        self.messages.pop()
-                        self._trace('done_token_received')
-                    return content
-
-                if content == '':
-                    with self.lock:
-                        if not self._is_current_run(run_id):
-                            return None
-                        self.messages.pop()
-                        self.last_error = 'Model returned an empty response.'
-                        self._trace('empty_model_response')
-                    if self.active_skill_name:
-                        record_skill_event(self.active_skill_name, 'failure')
-                    return None
-
-                if self.active_skill_name:
-                    policy_error = validate_final_response_against_skill_policy(self, content)
-                    if policy_error is not None:
-                        if self._handle_skill_policy_blocked_final_response(run_id, content, policy_error):
-                            continue
-                        return None
-                    record_skill_event(self.active_skill_name, 'fulfilled')
-                    self.last_fulfilled_skill_name = self.active_skill_name
-                else:
-                    self.last_fulfilled_skill_name = None
-                return content
-
-            with self.lock:
-                if not self._is_current_run(run_id):
-                    return None
-                self.last_error = f'Stopped after {self.MAX_AUTO_TURNS} turns without receiving {self.DONE}.'
-                self.messages.append({'role': 'assistant', 'content': self.last_error})
-                self._trace('max_auto_turns_reached', max_auto_turns=self.MAX_AUTO_TURNS)
-            if self.active_skill_name:
-                record_skill_event(self.active_skill_name, 'failure')
-            return None
-        finally:
-            self._finish_generation(run_id)
+        return call_model(self, run_id)
