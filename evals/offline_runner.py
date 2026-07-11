@@ -4,7 +4,7 @@ import argparse
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from agent.agent_skill_policy import (
     reset_skill_state,
@@ -12,6 +12,7 @@ from agent.agent_skill_policy import (
     validate_final_response_against_skill_policy,
     validate_tool_call_against_skill_policy,
 )
+from contracts.evals import ExpectedToolStep, OfflineEvalDocument, OfflineEvalScenario, SkillFixture
 from skills import selection
 from skills.guidance import build_execution_guidance
 from skills.skills_registry import Skill
@@ -35,7 +36,9 @@ class EvalAgent:
             self.verified_symbols_by_path = {}
 
 
-def skill_from_payload(payload: dict[str, Any]) -> Skill:
+def skill_from_payload(payload: SkillFixture | dict[str, Any]) -> Skill:
+    if isinstance(payload, SkillFixture):
+        payload = payload.to_payload()
     return Skill(
         name=str(payload['name']),
         description=str(payload.get('description', payload.get('summary', payload['name']))),
@@ -62,26 +65,36 @@ def skill_from_payload(payload: dict[str, Any]) -> Skill:
     )
 
 
-def load_scenarios(path: Path = DEFAULT_SCENARIO_PATH) -> list[dict[str, Any]]:
+def load_eval_document(path: Path = DEFAULT_SCENARIO_PATH) -> OfflineEvalDocument:
     payload = json.loads(path.read_text(encoding='utf-8'))
-    scenarios = payload.get('scenarios') if isinstance(payload, dict) else payload
-    if not isinstance(scenarios, list):
-        raise ValueError('eval scenario file must contain a scenarios array')
-    return scenarios
+    if not isinstance(payload, dict):
+        raise ValueError('eval scenario file must contain a versioned document object')
+    return OfflineEvalDocument(**payload)
 
 
-def _candidate_retriever(skills_by_name: dict[str, Skill], scenario: dict[str, Any]):
-    matches = scenario.get('candidate_matches')
-    if matches is None:
+def load_scenarios(path: Path = DEFAULT_SCENARIO_PATH) -> list[OfflineEvalScenario]:
+    return load_eval_document(path).scenarios
+
+
+def _coerce_scenario(scenario: OfflineEvalScenario | dict[str, Any]) -> OfflineEvalScenario:
+    if isinstance(scenario, OfflineEvalScenario):
+        return scenario
+    return OfflineEvalScenario(**scenario)
+
+
+def _candidate_retriever(skills_by_name: dict[str, Skill], scenario: OfflineEvalScenario):
+    matches = scenario.candidate_matches
+    if not matches:
         matches = [{'skill_name': name, 'distance': float(index)} for index, name in enumerate(skills_by_name)]
 
     def retrieve(_skills_by_name: dict[str, Skill], _user_text: str, _arguments: dict[str, Any], k: int = 8):
         candidates = []
         for match in matches[:k]:
-            skill_name = match.get('skill_name')
+            match_payload = match.to_payload() if hasattr(match, 'to_payload') else match
+            skill_name = match_payload.get('skill_name')
             skill = skills_by_name.get(str(skill_name))
             if skill is not None:
-                candidates.append((skill, dict(match)))
+                candidates.append((skill, dict(match_payload)))
         return candidates
 
     return retrieve
@@ -89,10 +102,11 @@ def _candidate_retriever(skills_by_name: dict[str, Skill], scenario: dict[str, A
 
 def choose_with_injected_candidates(
     skills_by_name: dict[str, Skill],
-    scenario: dict[str, Any],
+    scenario: OfflineEvalScenario | dict[str, Any],
     prompt: str,
     arguments: dict[str, Any],
 ) -> dict[str, Any]:
+    scenario = _coerce_scenario(scenario)
     original_retrieve = selection.retrieve_skill_candidates
     original_record = selection.record_skill_event
     original_bonus = selection.get_skill_score_bonus
@@ -104,8 +118,8 @@ def choose_with_injected_candidates(
             skills_by_name,
             prompt,
             arguments,
-            k=int(scenario.get('k', 8)),
-            threshold=float(scenario.get('threshold', 8.0)),
+            k=scenario.k,
+            threshold=scenario.threshold,
         )
     finally:
         selection.retrieve_skill_candidates = original_retrieve
@@ -124,12 +138,17 @@ def _expect_contains_all(errors: list[str], label: str, actual: list[Any], expec
         errors.append(f'{label}: missing {missing!r}; actual {actual!r}')
 
 
-def apply_tool_sequence(agent: EvalAgent, tool_sequence: list[dict[str, Any]], errors: list[str]) -> list[dict[str, Any]]:
+def apply_tool_sequence(
+    agent: EvalAgent,
+    tool_sequence: list[ExpectedToolStep] | list[dict[str, Any]],
+    errors: list[str],
+) -> list[dict[str, Any]]:
     results = []
     for index, step in enumerate(tool_sequence):
-        tool = str(step.get('tool', ''))
-        args = dict(step.get('arguments') or {})
-        expected = step.get('expect', 'allowed')
+        step = ExpectedToolStep(**step) if isinstance(step, dict) else step
+        tool = step.tool
+        args = cast(dict[str, Any], step.arguments)
+        expected = str(step.expect)
         policy_error = validate_tool_call_against_skill_policy(agent, tool, args)
         actual = 'blocked' if policy_error is not None else 'allowed'
         if actual != expected:
@@ -138,7 +157,7 @@ def apply_tool_sequence(agent: EvalAgent, tool_sequence: list[dict[str, Any]], e
             agent.skill_tool_call_index += 1
             if tool == 'list_code_symbols':
                 path = args.get('path')
-                symbols = step.get('verified_symbols') or []
+                symbols = step.verified_symbols
                 if isinstance(path, str):
                     agent.verified_symbols_by_path[path] = {str(symbol) for symbol in symbols}
             if tool == 'search_owasp_reference':
@@ -147,17 +166,18 @@ def apply_tool_sequence(agent: EvalAgent, tool_sequence: list[dict[str, Any]], e
     return results
 
 
-def run_scenario(scenario: dict[str, Any]) -> dict[str, Any]:
+def run_scenario(scenario: OfflineEvalScenario | dict[str, Any]) -> dict[str, Any]:
+    scenario = _coerce_scenario(scenario)
     errors: list[str] = []
-    prompt = str(scenario.get('prompt', ''))
-    arguments = dict(scenario.get('arguments') or {})
+    prompt = scenario.prompt
+    arguments = cast(dict[str, Any], scenario.arguments)
     skills_by_name = {
         skill.name: skill
-        for skill in (skill_from_payload(payload) for payload in scenario.get('skills') or [])
+        for skill in (skill_from_payload(payload) for payload in scenario.skills)
     }
 
     choice = choose_with_injected_candidates(skills_by_name, scenario, prompt, arguments)
-    expected_skill = scenario.get('expected_skill')
+    expected_skill = scenario.expected_skill
     _expect_equal(errors, 'selected skill', choice.get('skill_name'), expected_skill)
 
     guidance: dict[str, Any] | None = None
@@ -168,19 +188,19 @@ def run_scenario(scenario: dict[str, Any]) -> dict[str, Any]:
             errors,
             'resolved task type',
             guidance.get('resolved_task_type'),
-            scenario.get('expected_resolved_task_type'),
+            scenario.expected_resolved_task_type,
         )
         _expect_contains_all(
             errors,
             'recommended tools',
             [item.get('tool') for item in guidance.get('recommended_tool_calls') or []],
-            list(scenario.get('must_recommend_tools') or []),
+            list(scenario.must_recommend_tools),
         )
         _expect_contains_all(
             errors,
             'allowed tools',
             list(guidance.get('allowed_tools') or []),
-            list(scenario.get('must_allow_tools') or []),
+            list(scenario.must_allow_tools),
         )
 
     agent = EvalAgent()
@@ -188,14 +208,13 @@ def run_scenario(scenario: dict[str, Any]) -> dict[str, Any]:
     if selected_skill is not None and guidance is not None:
         set_skill_state_from_selection(agent, {'skill_name': selected_skill.name, **guidance})
 
-    tool_results = apply_tool_sequence(agent, list(scenario.get('tool_sequence') or []), errors)
+    tool_results = apply_tool_sequence(agent, scenario.tool_sequence, errors)
 
-    final_answer = scenario.get('final_answer') or {}
     final_policy_error = None
-    if final_answer:
-        content = str(final_answer.get('content', ''))
+    if scenario.final_answer is not None:
+        content = scenario.final_answer.content
         final_policy_error = validate_final_response_against_skill_policy(agent, content)
-        expected_blocked = bool(final_answer.get('expect_blocked', False))
+        expected_blocked = scenario.final_answer.expect_blocked
         actual_blocked = final_policy_error is not None
         if actual_blocked != expected_blocked:
             errors.append(
@@ -204,7 +223,7 @@ def run_scenario(scenario: dict[str, Any]) -> dict[str, Any]:
             )
 
     return {
-        'name': scenario.get('name', '<unnamed>'),
+        'name': scenario.name,
         'status': 'pass' if not errors else 'fail',
         'errors': errors,
         'choice': choice,
@@ -214,7 +233,7 @@ def run_scenario(scenario: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def run_scenarios(scenarios: list[dict[str, Any]]) -> dict[str, Any]:
+def run_scenarios(scenarios: list[OfflineEvalScenario] | list[dict[str, Any]]) -> dict[str, Any]:
     results = [run_scenario(scenario) for scenario in scenarios]
     failed = [result for result in results if result['status'] != 'pass']
     return {
