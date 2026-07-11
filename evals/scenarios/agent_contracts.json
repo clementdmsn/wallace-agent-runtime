@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "scenarios": [
     {
       "name": "owasp_review_requires_reference_search_before_final",
