@@ -112,6 +112,9 @@ def test_request_skill_for_intent_returns_null_selection_without_loading_skill(m
             'status': 'ok',
             'skill_name': None,
             'message': 'No relevant skill is available.',
+            'forced': False,
+            'candidates': [],
+            'rejected_candidates': [],
         },
         'message': 'No relevant skill is available.',
     }

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
+from contracts.skills import RequestedSkillResult
 from skills.guidance import build_execution_guidance, merge_and_sanitize_intent_args
 from skills.loader import load_skills
 from skills.selection import (
@@ -16,6 +17,10 @@ from skills.stats import record_skill_event as record_skill_event
 # importing from skills.skills while implementation details live in focused files.
 SKILLS: list[Skill] = load_skills()
 SKILLS_BY_NAME: dict[str, Skill] = {skill.name: skill for skill in SKILLS}
+
+
+def requested_skill_result_payload(**fields: Any) -> dict[str, Any]:
+    return cast(dict[str, Any], RequestedSkillResult(**fields).to_payload())
 
 
 def refresh_skill_registry() -> None:
@@ -72,16 +77,16 @@ def request_skill_for_intent(
 
     selected_skill_name = choice.get('skill_name')
     if not selected_skill_name:
-        return {
-            'status': 'ok',
-            'skill_name': None,
-            'arguments': merged_args,
-            'selection': choice,
-            'message': choice.get(
+        return requested_skill_result_payload(
+            status='ok',
+            skill_name=None,
+            arguments=merged_args,
+            selection=choice,
+            message=choice.get(
                 'message',
                 'No relevant skill is available. Improvise a short procedure with normal tool discipline.',
             ),
-        }
+        )
 
     skill = get_skill(str(selected_skill_name))
     if skill is None:
@@ -89,31 +94,27 @@ def request_skill_for_intent(
 
     guidance = build_execution_guidance(skill, intent, merged_args)
 
-    return {
-        'status': 'ok',
-        'skill_name': skill.name,
-        'description': skill.description,
-        'procedure': skill.procedure,
-        'metadata_path': skill.metadata_path,
-        'procedure_path': skill.procedure_path,
-        'tools_required': list(skill.tools_required),
-        'preconditions': list(skill.preconditions),
-        'when_to_use': list(skill.when_to_use),
-        'when_not_to_use': list(skill.when_not_to_use),
-        'exclusions': list(skill.exclusions),
-        'arguments': merged_args,
-        'resolved_task_type': guidance['resolved_task_type'],
-        'recommended_tool_calls': guidance['recommended_tool_calls'],
-        'allowed_tools': guidance['allowed_tools'],
-        'forbidden_tool_calls': guidance['forbidden_tool_calls'],
-        'procedure_overrides': guidance['procedure_overrides'],
-        'selection': choice,
-        'message': (
+    return requested_skill_result_payload(
+        status='ok',
+        skill_name=skill.name,
+        description=skill.description,
+        procedure=skill.procedure,
+        metadata_path=skill.metadata_path,
+        procedure_path=skill.procedure_path,
+        tools_required=list(skill.tools_required),
+        preconditions=list(skill.preconditions),
+        when_to_use=list(skill.when_to_use),
+        when_not_to_use=list(skill.when_not_to_use),
+        exclusions=list(skill.exclusions),
+        arguments=merged_args,
+        guidance=guidance,
+        selection=choice,
+        message=(
             'Follow procedure_overrides first when present. Then follow the returned skill procedure. '
             'Use only registered tools for deterministic actions. If recommended_tool_calls is non-empty, '
             'make the first recommended tool call before answering.'
         ),
-    }
+    )
 
 
 def get_skill(skill_name: str) -> Skill | None:

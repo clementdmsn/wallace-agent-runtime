@@ -122,4 +122,15 @@ class RequestedSkillResult(ContractModel):
             payload.pop('guidance', None)
             payload.update(self.guidance.to_payload())
 
+        if self.skill_name is None:
+            for field_name in (
+                'tools_required',
+                'preconditions',
+                'when_to_use',
+                'when_not_to_use',
+                'exclusions',
+            ):
+                if field_name not in self.model_fields_set:
+                    payload.pop(field_name, None)
+
         return cast(dict[str, JsonValue], payload)

@@ -480,11 +480,6 @@ def test_requested_skill_result_preserves_null_skill_name_for_compatibility():
             'candidates': [],
             'rejected_candidates': [],
         },
-        'tools_required': [],
-        'preconditions': [],
-        'when_to_use': [],
-        'when_not_to_use': [],
-        'exclusions': [],
         'message': 'No relevant skill is available.',
     }
 
