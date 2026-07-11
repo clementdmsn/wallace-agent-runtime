@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 
 import pytest
 from pydantic import ValidationError
@@ -219,6 +220,18 @@ def test_offline_eval_scenario_rejects_negative_candidate_distance():
     scenario = scenarios[0]
     assert isinstance(scenario, dict)
     scenario['candidate_matches'] = [{'skill_name': 'code_explainer', 'distance': -0.1}]
+
+    with pytest.raises(ValidationError):
+        OfflineEvalDocument(**payload)
+
+
+def test_offline_eval_scenario_rejects_non_finite_json_arguments():
+    payload = valid_document_payload()
+    scenarios = payload['scenarios']
+    assert isinstance(scenarios, list)
+    scenario = scenarios[0]
+    assert isinstance(scenario, dict)
+    scenario['arguments'] = {'path': 'auth.py', 'score': math.inf}
 
     with pytest.raises(ValidationError):
         OfflineEvalDocument(**payload)

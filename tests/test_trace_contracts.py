@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 
 import pytest
 from pydantic import ValidationError
@@ -106,6 +107,17 @@ def test_run_trace_event_rejects_non_json_fields():
             run_id=2,
             trace_id='trace-2',
             fields={'bad': object()},
+        )
+
+
+def test_run_trace_event_rejects_non_finite_json_fields():
+    with pytest.raises(ValidationError):
+        RunTraceEvent(
+            ts='2026-07-11T10:00:00+0000',
+            event='model_call_finished',
+            run_id=2,
+            trace_id='trace-2',
+            fields={'metrics': {'latency_ms': math.nan}},
         )
 
 

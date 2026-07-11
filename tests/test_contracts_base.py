@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import pytest
 from pydantic import ValidationError
 
@@ -101,3 +103,15 @@ def test_json_value_accepts_nested_json_payloads():
             'object': {'nested': 'value'},
         }
     }
+
+
+@pytest.mark.parametrize('value', [math.nan, math.inf, -math.inf])
+def test_json_value_rejects_non_finite_floats(value: float):
+    with pytest.raises(ValidationError):
+        DemoJsonContract(payload={'value': value})
+
+
+@pytest.mark.parametrize('value', [math.nan, math.inf, -math.inf])
+def test_json_value_rejects_nested_non_finite_floats(value: float):
+    with pytest.raises(ValidationError):
+        DemoJsonContract(payload={'nested': {'values': [1, value]}})
