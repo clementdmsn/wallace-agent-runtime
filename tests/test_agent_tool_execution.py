@@ -3,7 +3,10 @@ from __future__ import annotations
 import json
 import threading
 
+import pytest
+
 from agent import agent_tool_execution
+from contracts.events import PendingApproval
 from tools.tool_registry import Tool
 
 
@@ -34,14 +37,14 @@ class FakeAgent:
         self.trace_events.append({'event': event, **fields})
 
     def set_pending_approval(self, tool_name, args, result, call_id='') -> None:
-        self.pending_approval = {
-            'tool': tool_name,
-            'call_id': call_id,
-            'args': dict(args),
-            'approval_id': result.get('approval_id'),
-            'domain': result.get('domain'),
-            'url': result.get('url') or args.get('url'),
-        }
+        self.pending_approval = PendingApproval(
+            tool=tool_name,
+            call_id=call_id,
+            args=dict(args),
+            approval_id=result.get('approval_id'),
+            domain=result.get('domain'),
+            url=result.get('url') or args.get('url'),
+        ).to_payload()
 
 
 def tool_call(name: str, arguments: str = '{}') -> dict[str, object]:
@@ -65,6 +68,27 @@ def test_execute_tool_call_records_invalid_json_as_tool_error():
     hidden = agent.messages[0]
     assert hidden['role'] == 'tool'
     assert json.loads(hidden['content'])['status'] == 'error'
+
+
+@pytest.mark.parametrize('constant', ['NaN', 'Infinity', '-Infinity'])
+def test_execute_tool_call_rejects_non_finite_json_arguments(monkeypatch, constant: str):
+    agent = FakeAgent()
+    called = []
+
+    monkeypatch.setitem(
+        agent_tool_execution.TOOLS,
+        'fake_tool',
+        Tool('fake_tool', lambda value: called.append(value) or {'status': 'ok'}),
+    )
+
+    ok = agent_tool_execution.execute_tool_call(agent, tool_call('fake_tool', f'{{"value": {constant}}}'), 7)
+
+    assert ok is True
+    assert called == []
+    assert agent.tool_events[0]['result']['status'] == 'error'
+    assert f'invalid JSON constant: {constant}' in agent.tool_events[0]['result']['error']
+    hidden = json.loads(agent.messages[0]['content'])
+    assert hidden['status'] == 'error'
 
 
 def test_execute_tool_call_records_unknown_tool_error():
@@ -175,6 +199,32 @@ def test_execute_tool_call_stops_run_for_pending_approval(monkeypatch):
     }
     assert agent.last_error == 'Waiting for user approval.'
     assert agent.messages == []
+
+
+def test_execute_tool_call_converts_incomplete_approval_result_to_tool_error(monkeypatch):
+    agent = FakeAgent()
+
+    def fake_curl(url: str) -> dict[str, object]:
+        return {
+            'status': 'approval_required',
+            'url': url,
+        }
+
+    monkeypatch.setitem(agent_tool_execution.TOOLS, 'curl_url', Tool('curl_url', fake_curl))
+
+    ok = agent_tool_execution.execute_tool_call(
+        agent,
+        tool_call('curl_url', json.dumps({'url': 'https://docs.python.org/3/'})),
+        7,
+    )
+
+    assert ok is True
+    assert agent.pending_approval is None
+    assert agent.last_error == ''
+    assert agent.tool_events[0]['result']['status'] == 'error'
+    assert 'approval_required curl results must include' in agent.tool_events[0]['result']['error']
+    hidden = json.loads(agent.messages[0]['content'])
+    assert hidden['status'] == 'error'
 
 
 def test_execute_tool_call_does_not_mutate_stale_run(monkeypatch):

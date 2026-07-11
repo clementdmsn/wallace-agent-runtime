@@ -15,7 +15,12 @@ class ResultStatus(StrEnum):
 
 
 class ContractModel(BaseModel):
-    model_config = ConfigDict(extra='forbid', use_enum_values=True, validate_assignment=True)
+    model_config = ConfigDict(
+        allow_inf_nan=False,
+        extra='forbid',
+        use_enum_values=True,
+        validate_assignment=True,
+    )
 
     def to_payload(self) -> dict[str, JsonValue]:
         return cast(dict[str, JsonValue], self.model_dump(exclude_none=True, mode='json'))

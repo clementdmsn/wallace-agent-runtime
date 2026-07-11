@@ -217,6 +217,34 @@ def test_curl_result_serializes_approval_payload():
     }
 
 
+@pytest.mark.parametrize('missing_field', ['url', 'domain', 'approval_id'])
+def test_curl_result_rejects_approval_payload_missing_required_metadata(missing_field: str):
+    payload = {
+        'status': ResultStatus.APPROVAL_REQUIRED,
+        'url': 'https://docs.python.org/3/',
+        'domain': 'docs.python.org',
+        'approval_id': 'curl:docs.python.org:123',
+    }
+    payload.pop(missing_field)
+
+    with pytest.raises(ValidationError, match='approval_required curl results must include'):
+        CurlResult(**payload)
+
+
+@pytest.mark.parametrize('empty_field', ['url', 'domain', 'approval_id'])
+def test_curl_result_rejects_approval_payload_empty_required_metadata(empty_field: str):
+    payload = {
+        'status': ResultStatus.APPROVAL_REQUIRED,
+        'url': 'https://docs.python.org/3/',
+        'domain': 'docs.python.org',
+        'approval_id': 'curl:docs.python.org:123',
+    }
+    payload[empty_field] = ''
+
+    with pytest.raises(ValidationError):
+        CurlResult(**payload)
+
+
 def test_skill_index_result_serializes_search_matches():
     match = SkillIndexMatch(
         row_id=3,

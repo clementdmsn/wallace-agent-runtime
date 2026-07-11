@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import threading
+import logging
 from pathlib import Path
 from typing import Any
 
 from flask import Flask, jsonify, request, send_from_directory
+from pydantic import ValidationError
 
 from agent.agent import Agent
-from agent.agent_tool_execution import append_resolved_tool_result
+from agent.agent_tool_execution import append_resolved_tool_result, validate_registered_tool_result
 from config import SETTINGS, env_bool
-from contracts.api import RuntimeStateResponse
+from contracts.api import ApiErrorResponse, RuntimeStateResponse
 from tools.curl_tool import add_domain_to_whitelist
 from tools.tools import TOOLS
 from web.metrics_routes import register_metrics_routes
@@ -17,6 +19,7 @@ from web.metrics_routes import register_metrics_routes
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR
+logger = logging.getLogger(__name__)
 
 
 class WallaceRuntime:
@@ -78,6 +81,8 @@ def visible_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for message in messages:
         role = str(message.get("role", "assistant"))
         if role in {"system", "tool"}:
+            continue
+        if role not in {"user", "assistant"}:
             continue
 
         content = message.get("content") or ""
@@ -144,26 +149,31 @@ def create_app(
 
     @app.get("/api/state")
     def get_state() -> Any:
-        with runtime.agent.lock:
-            messages = [dict(message) for message in runtime.agent.messages]
-            tool_events = [dict(event) for event in runtime.agent.tool_events]
-            runtime_metrics = runtime.agent.metrics.snapshot()
-            last_error = runtime.agent.last_error
-            is_generating = runtime.agent.is_generating
-            pending_approval = runtime.agent.snapshot_pending_approval()
-            active_skill_name = runtime.agent.active_skill_name
-            active_skill_policy = dict(runtime.agent.active_skill_policy or {})
+        try:
+            with runtime.agent.lock:
+                messages = [dict(message) for message in runtime.agent.messages]
+                tool_events = [dict(event) for event in runtime.agent.tool_events]
+                runtime_metrics = runtime.agent.metrics.snapshot()
+                last_error = runtime.agent.last_error
+                is_generating = runtime.agent.is_generating
+                pending_approval = runtime.agent.snapshot_pending_approval()
+                active_skill_name = runtime.agent.active_skill_name
+                active_skill_policy = dict(runtime.agent.active_skill_policy or {})
 
-        state = RuntimeStateResponse(
-            messages=visible_messages(messages),
-            tool_events=serialize_tool_events(tool_events),
-            runtime_metrics=runtime_metrics,
-            active_skill_name=active_skill_name,
-            active_skill_policy=active_skill_policy,
-            is_generating=is_generating,
-            last_error=last_error,
-            pending_approval=pending_approval,
-        )
+            state = RuntimeStateResponse(
+                messages=visible_messages(messages),
+                tool_events=serialize_tool_events(tool_events),
+                runtime_metrics=runtime_metrics,
+                active_skill_name=active_skill_name,
+                active_skill_policy=active_skill_policy,
+                is_generating=is_generating,
+                last_error=last_error,
+                pending_approval=pending_approval,
+            )
+        except ValidationError:
+            logger.exception("runtime state contract validation failed")
+            error = ApiErrorResponse(error="Runtime state failed contract validation.")
+            return jsonify(error.to_payload()), 500
 
         return jsonify(state.to_payload())
 
@@ -205,6 +215,15 @@ def create_app(
             if tool is None:
                 return jsonify({"ok": False, "error": "Pending tool is no longer registered"}), 500
             raw_tool_result = tool.func(**dict(pending.get("args") or {}))
+            try:
+                raw_tool_result = validate_registered_tool_result(
+                    str(pending.get("tool") or "curl_url"),
+                    raw_tool_result,
+                )
+            except ValidationError:
+                logger.exception("curl approval tool result contract validation failed")
+                error = ApiErrorResponse(error="Curl approval result failed contract validation.")
+                return jsonify(error.to_payload()), 500
             if isinstance(raw_tool_result, dict) and raw_tool_result.get("status") == "approval_required":
                 replaced = runtime.agent.replace_pending_approval(
                     approval_id or None,

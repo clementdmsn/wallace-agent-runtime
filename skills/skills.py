@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from contracts.skills import RequestedSkillResult
+from contracts.skills import RequestedSkillErrorResult, RequestedSkillResult
 from skills.guidance import build_execution_guidance, merge_and_sanitize_intent_args
 from skills.loader import load_skills
 from skills.selection import (
@@ -21,6 +21,13 @@ SKILLS_BY_NAME: dict[str, Skill] = {skill.name: skill for skill in SKILLS}
 
 def requested_skill_result_payload(**fields: Any) -> dict[str, Any]:
     return cast(dict[str, Any], RequestedSkillResult(**fields).to_payload())
+
+
+def requested_skill_error_payload(error: object) -> dict[str, Any]:
+    return cast(
+        dict[str, Any],
+        RequestedSkillErrorResult(status='error', error=str(error)).to_payload(),
+    )
 
 
 def refresh_skill_registry() -> None:
@@ -61,19 +68,19 @@ def request_skill_for_intent(
     threshold: float = 8.0,
 ) -> dict[str, Any]:
     if not isinstance(intent, str):
-        return {'status': 'error', 'error': 'intent must be a string'}
+        return requested_skill_error_payload('intent must be a string')
     intent = intent.strip()
     if not intent:
-        return {'status': 'error', 'error': 'empty intent'}
+        return requested_skill_error_payload('empty intent')
     if arguments is None:
         arguments = {}
     if not isinstance(arguments, dict):
-        return {'status': 'error', 'error': 'arguments must be an object'}
+        return requested_skill_error_payload('arguments must be an object')
 
     merged_args = merge_and_sanitize_intent_args(intent, arguments)
     choice = choose_skill_for_intent(intent, merged_args, k=k, threshold=threshold)
     if choice.get('status') != 'ok':
-        return choice
+        return requested_skill_error_payload(choice.get('error', 'skill selection failed'))
 
     selected_skill_name = choice.get('skill_name')
     if not selected_skill_name:
@@ -90,7 +97,7 @@ def request_skill_for_intent(
 
     skill = get_skill(str(selected_skill_name))
     if skill is None:
-        return {'status': 'error', 'error': f'selected skill is not loaded: {selected_skill_name}'}
+        return requested_skill_error_payload(f'selected skill is not loaded: {selected_skill_name}')
 
     guidance = build_execution_guidance(skill, intent, merged_args)
 

@@ -18,13 +18,21 @@ from agent.agent_skill_policy import (
 from agent.agent_tool_execution import execute_tool_call
 from agent.model_streaming import consume_model_stream
 from agent.run_trace import RunTrace
-from contracts.events import PendingApproval, SkillPolicyEvent, SkillSelectionEvent
+from contracts.events import PendingApproval, SkillPolicyEvent, SkillSelectionEvent, SkillSelectionEventStatus
 from tools.tools import OPENAI_TOOLS
 from config import SETTINGS
 from skills.skills import record_skill_event, request_skill_for_intent
 from skills.intent import extract_intent
 
 logger = logging.getLogger(__name__)
+
+
+def skill_selection_event_status(value: object) -> SkillSelectionEventStatus:
+    if value == SkillSelectionEventStatus.OK or value == SkillSelectionEventStatus.OK.value:
+        return SkillSelectionEventStatus.OK
+    if value == SkillSelectionEventStatus.ERROR or value == SkillSelectionEventStatus.ERROR.value:
+        return SkillSelectionEventStatus.ERROR
+    return SkillSelectionEventStatus.UNKNOWN
 
 
 class Agent:
@@ -402,7 +410,7 @@ class Agent:
             self._append_skill_selection_event(
                 SkillSelectionEvent(
                     kind='skill_selection',
-                    status=str(result.get('status', 'unknown')),
+                    status=skill_selection_event_status(result.get('status')),
                     skill_name=result.get('skill_name'),
                     selection=result.get('selection'),
                 )

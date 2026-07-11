@@ -67,6 +67,15 @@ def test_request_skill_for_intent_returns_choice_error(monkeypatch):
     assert skills.request_skill_for_intent('demo') == {'status': 'error', 'error': 'boom'}
 
 
+def test_request_skill_for_intent_returns_default_choice_error(monkeypatch):
+    monkeypatch.setattr(skills, 'choose_skill_for_intent', lambda *args, **kwargs: {'status': 'error'})
+
+    assert skills.request_skill_for_intent('demo') == {
+        'status': 'error',
+        'error': 'skill selection failed',
+    }
+
+
 def test_request_skill_for_intent_reports_unloaded_selected_skill(monkeypatch):
     monkeypatch.setattr(skills, 'SKILLS_BY_NAME', {})
     monkeypatch.setattr(

@@ -96,6 +96,7 @@ def test_state_hides_system_and_tool_messages():
             {'role': 'system', 'content': 'hidden'},
             {'role': 'user', 'content': 'hello'},
             {'role': 'tool', 'content': 'hidden tool'},
+            {'role': 'developer', 'content': 'hidden developer'},
             {'role': 'assistant', 'content': 'hi'},
             {'role': 'assistant', 'content': '', 'tool_calls': [{'id': '1'}]},
         ],
@@ -110,7 +111,15 @@ def test_state_hides_system_and_tool_messages():
         {'role': 'user', 'content': 'hello'},
         {'role': 'assistant', 'content': 'hi'},
     ]
-    assert payload['tool_events'] == [{'kind': 'tool', 'tool': 'read_file', 'result': {'status': 'ok'}}]
+    assert payload['tool_events'] == [
+        {
+            'id': '',
+            'kind': 'tool',
+            'args': {},
+            'tool': 'read_file',
+            'result': {'status': 'ok'},
+        }
+    ]
     assert 'runtime_metrics' in payload
     assert payload['active_skill_name'] is None
     assert payload['active_skill_policy'] == {}
@@ -137,6 +146,42 @@ def test_state_includes_active_skill_policy():
         'discover_review_targets',
         'search_owasp_reference',
     ]
+
+
+def test_state_returns_controlled_error_for_invalid_runtime_events(caplog):
+    client = web_app.app.test_client()
+    seed_agent_state(
+        tool_events=[{'kind': 'skill_policy', 'status': 'ok'}],
+    )
+
+    with caplog.at_level('ERROR', logger='web.web_app'):
+        response = client.get('/api/state')
+
+    assert response.status_code == 500
+    assert response.get_json() == {
+        'ok': False,
+        'error': 'Runtime state failed contract validation.',
+    }
+    assert 'runtime state contract validation failed' in caplog.text
+
+
+def test_state_returns_controlled_error_for_invalid_pending_approval(caplog):
+    client = web_app.app.test_client()
+    with web_app.agent.lock:
+        web_app.agent.pending_approval = {
+            'tool': 'curl_url',
+            'approval_id': 'curl:docs.python.org:123',
+        }
+
+    with caplog.at_level('ERROR', logger='web.web_app'):
+        response = client.get('/api/state')
+
+    assert response.status_code == 500
+    assert response.get_json() == {
+        'ok': False,
+        'error': 'Runtime state failed contract validation.',
+    }
+    assert 'runtime state contract validation failed' in caplog.text
 
 
 def test_state_includes_pending_curl_approval():
@@ -479,6 +524,46 @@ def test_curl_approval_updates_pending_for_redirect_domain_without_resuming(monk
     assert resumed == []
     assert runtime.agent.messages == runtime.agent._initial_messages()
     assert runtime.agent.last_error == 'Waiting for user approval.'
+
+
+def test_curl_approval_rejects_invalid_redirect_approval_result(monkeypatch, caplog):
+    runtime = web_app.WallaceRuntime(web_app.Agent())
+    pending = {
+        'tool': 'curl_url',
+        'call_id': 'call-1',
+        'args': {'url': 'https://docs.python.org/3/'},
+        'approval_id': 'curl:docs.python.org:123',
+        'domain': 'docs.python.org',
+        'url': 'https://docs.python.org/3/',
+    }
+    runtime.agent.pending_approval = dict(pending)
+    resumed = []
+    monkeypatch.setattr(web_app, 'add_domain_to_whitelist', lambda domain: {'status': 'ok'})
+    monkeypatch.setitem(
+        web_app.TOOLS,
+        'curl_url',
+        Tool('curl_url', lambda url: {'status': 'approval_required', 'url': 'https://cdn.example/docs'}),
+    )
+    runtime.resume_with_resolved_tool_result = (
+        lambda received_pending, tool_result, approval_id:
+        resumed.append((received_pending, tool_result, approval_id)) or True
+    )
+    client = web_app.create_app(runtime).test_client()
+
+    with caplog.at_level('ERROR', logger='web.web_app'):
+        response = client.post(
+            '/api/curl-approvals',
+            json={'approval_id': 'curl:docs.python.org:123', 'action': 'approve'},
+        )
+
+    assert response.status_code == 500
+    assert response.get_json() == {
+        'ok': False,
+        'error': 'Curl approval result failed contract validation.',
+    }
+    assert resumed == []
+    assert runtime.agent.pending_approval == pending
+    assert 'curl approval tool result contract validation failed' in caplog.text
 
 
 def test_curl_approval_deny_appends_denial_and_resumes():

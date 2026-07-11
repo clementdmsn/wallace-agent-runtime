@@ -11,6 +11,7 @@ from agent.agent_skill_policy import (
     validate_tool_call_against_skill_policy,
 )
 from contracts.events import ToolEvent
+from contracts.tool_results import CurlResult
 from skills.stats import record_skill_event
 from tools.tools import TOOLS
 
@@ -27,6 +28,10 @@ class ToolExecutionResult:
     kind: str
     args: dict[str, Any]
     result: object
+
+
+def reject_json_constant(value: str) -> None:
+    raise ValueError(f'invalid JSON constant: {value}')
 
 
 def result_payload(name: str, result: object, kind: str) -> dict[str, Any]:
@@ -115,7 +120,7 @@ def parse_tool_call(tool_call: dict[str, Any]) -> ParsedToolCall:
 
 def parse_tool_args(raw_args: str) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
     try:
-        args = json.loads(raw_args)
+        args = json.loads(raw_args, parse_constant=reject_json_constant)
         if not isinstance(args, dict):
             raise ValueError('call arguments must decode to an object')
     except Exception as exc:
@@ -153,6 +158,12 @@ def apply_skill_authoring_retry_policy(agent: Any, call_name: str, result: objec
     }
 
 
+def validate_registered_tool_result(call_name: str, result: object) -> object:
+    if call_name == 'curl_url' and isinstance(result, dict):
+        return CurlResult(**result).to_payload()
+    return result
+
+
 def execute_registered_tool(agent: Any, call_name: str, args: dict[str, Any]) -> object:
     policy_error = validate_tool_call_against_skill_policy(agent, call_name, args)
     if policy_error is not None:
@@ -161,6 +172,7 @@ def execute_registered_tool(agent: Any, call_name: str, args: dict[str, Any]) ->
 
     record_active_skill_event(agent, 'used')
     result = TOOLS[call_name].func(**args)
+    result = validate_registered_tool_result(call_name, result)
     result = apply_skill_authoring_retry_policy(agent, call_name, result)
     remember_verified_symbols(agent, call_name, args, result)
     remember_owasp_reference_search(agent, call_name, result)

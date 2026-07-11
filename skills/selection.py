@@ -63,6 +63,7 @@ def skill_validation_payload(validation: dict[str, Any], valid: bool = True) -> 
             valid=valid,
             score=validation.get('score'),
             reasons=list(validation.get('reasons') or []),
+            intent=validation.get('intent'),
         ).to_payload(),
     )
 

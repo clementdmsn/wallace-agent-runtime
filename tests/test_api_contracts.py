@@ -20,6 +20,11 @@ def test_visible_message_rejects_unknown_fields():
         VisibleMessage(role='assistant', content='hello', unexpected='value')
 
 
+def test_visible_message_rejects_non_exposed_role():
+    with pytest.raises(ValidationError):
+        VisibleMessage(role='system', content='hidden')
+
+
 def test_runtime_state_response_uses_safe_defaults():
     response = RuntimeStateResponse(is_generating=False)
 
@@ -50,6 +55,17 @@ def test_runtime_state_response_serializes_current_state_shape():
                 'kind': 'tool',
                 'tool': 'read_file',
                 'result': {'status': 'ok'},
+            },
+            {
+                'kind': 'skill_selection',
+                'status': 'ok',
+                'skill_name': 'owasp_security_review',
+                'selection': {'forced': True},
+            },
+            {
+                'kind': 'skill_policy',
+                'status': 'error',
+                'error': 'missing required reference search',
             }
         ],
         runtime_metrics={'last_request': {'model': 'demo'}},
@@ -74,9 +90,22 @@ def test_runtime_state_response_serializes_current_state_shape():
         ],
         'tool_events': [
             {
+                'id': '',
                 'kind': 'tool',
+                'args': {},
                 'tool': 'read_file',
                 'result': {'status': 'ok'},
+            },
+            {
+                'kind': 'skill_selection',
+                'status': 'ok',
+                'skill_name': 'owasp_security_review',
+                'selection': {'forced': True},
+            },
+            {
+                'kind': 'skill_policy',
+                'status': 'error',
+                'error': 'missing required reference search',
             }
         ],
         'runtime_metrics': {'last_request': {'model': 'demo'}},
@@ -100,6 +129,22 @@ def test_runtime_state_response_rejects_unknown_fields():
         RuntimeStateResponse(is_generating=False, unexpected='value')
 
 
+def test_runtime_state_response_rejects_unknown_event_kind():
+    with pytest.raises(ValidationError):
+        RuntimeStateResponse(
+            is_generating=False,
+            tool_events=[{'kind': 'unknown', 'status': 'ok'}],
+        )
+
+
+def test_runtime_state_response_rejects_malformed_event_status():
+    with pytest.raises(ValidationError):
+        RuntimeStateResponse(
+            is_generating=False,
+            tool_events=[{'kind': 'skill_policy', 'status': 'ok'}],
+        )
+
+
 def test_runtime_state_response_defaults_are_not_shared():
     first = RuntimeStateResponse(is_generating=False)
     second = RuntimeStateResponse(is_generating=False)
@@ -119,6 +164,11 @@ def test_api_ok_response_serializes_success_flag():
     assert ApiOkResponse().to_payload() == {'ok': True}
 
 
+def test_api_ok_response_rejects_false_discriminator():
+    with pytest.raises(ValidationError):
+        ApiOkResponse(ok=False)
+
+
 def test_api_error_response_serializes_error_message():
     response = ApiErrorResponse(error='Empty message')
 
@@ -126,3 +176,8 @@ def test_api_error_response_serializes_error_message():
         'ok': False,
         'error': 'Empty message',
     }
+
+
+def test_api_error_response_rejects_true_discriminator():
+    with pytest.raises(ValidationError):
+        ApiErrorResponse(ok=True, error='Empty message')

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from pydantic import Field
+from typing import Self
+
+from pydantic import Field, model_validator
 
 from contracts.base import ContractModel, ResultStatus
 from contracts.types import JsonValue
@@ -83,13 +85,28 @@ class ExplainFunctionResult(ToolResult):
 
 
 class CurlResult(ToolResult):
-    url: str | None = None
+    url: str | None = Field(default=None, min_length=1)
     final_url: str | None = None
-    domain: str | None = None
+    domain: str | None = Field(default=None, min_length=1)
     title: str | None = None
     content: str | None = None
     truncated: bool | None = None
-    approval_id: str | None = None
+    approval_id: str | None = Field(default=None, min_length=1)
+
+    @model_validator(mode='after')
+    def validate_approval_metadata(self) -> Self:
+        if self.status != ResultStatus.APPROVAL_REQUIRED:
+            return self
+
+        missing = [
+            field_name
+            for field_name in ('approval_id', 'domain', 'url')
+            if getattr(self, field_name) is None
+        ]
+        if missing:
+            raise ValueError(f'approval_required curl results must include: {", ".join(missing)}')
+
+        return self
 
 
 class SkillIndexMatch(ContractModel):
