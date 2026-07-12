@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import threading
 import logging
 from pathlib import Path
 from typing import Any
@@ -17,8 +16,7 @@ from tools.tools import TOOLS
 from web.metrics_routes import register_metrics_routes
 
 
-BASE_DIR = Path(__file__).resolve().parent
-STATIC_DIR = BASE_DIR
+STATIC_DIR = Path(__file__).resolve().parent
 logger = logging.getLogger(__name__)
 
 # return only messages that are not system, tool or that have no context
@@ -69,10 +67,7 @@ def model_safe_curl_result(result: Any) -> dict[str, Any]:
     return {"status": "error", "error": str(result)}
 
 
-def create_app(
-    runtime: AgentRuntime | None = None,
-    start_generation_func: Any | None = None,
-) -> Flask:
+def create_app(runtime: AgentRuntime | None = None) -> Flask:
     runtime = runtime or AgentRuntime()
     app = Flask(__name__, static_folder=str(STATIC_DIR), static_url_path="")
     register_metrics_routes(app, runtime)
@@ -131,8 +126,7 @@ def create_app(
         if not content:
             return jsonify({"ok": False, "error": "Empty message"}), 400
 
-        starter = start_generation_func or runtime.start_generation
-        started = starter({"role": "user", "content": content})
+        started = runtime.start_generation({"role": "user", "content": content})
         if not started:
             return jsonify({"ok": False, "error": "Generation already in progress"}), 409
 
@@ -216,21 +210,7 @@ def create_app(
 
 
 default_runtime = AgentRuntime()
-agent = default_runtime.agent
-worker: threading.Thread | None = None
-state_lock = default_runtime.state_lock
-
-
-def start_generation(submitted: dict[str, Any] | None = None) -> bool:
-    global worker
-
-    default_runtime.worker = worker
-    started = default_runtime.start_generation(submitted)
-    worker = default_runtime.worker
-    return started
-
-
-app = create_app(default_runtime, start_generation_func=lambda submitted: start_generation(submitted))
+app = create_app(default_runtime)
 
 def run() -> None:
     app.run(

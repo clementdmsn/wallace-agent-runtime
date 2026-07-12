@@ -40,19 +40,21 @@ class FakeClient:
 
 
 def reset_web_agent() -> None:
-    with web_app.agent.lock:
-        web_app.agent.messages = web_app.agent._initial_messages()
-        web_app.agent.tool_events = []
-        web_app.agent.is_generating = False
-        web_app.agent.last_error = ''
-        web_app.agent.pending_approval = None
-        web_app.agent.metrics.reset_current()
-        web_app.agent._reset_skill_state()
+    agent = web_app.default_runtime.agent
+    with agent.lock:
+        agent.messages = agent._initial_messages()
+        agent.tool_events = []
+        agent.is_generating = False
+        agent.last_error = ''
+        agent.pending_approval = None
+        agent.metrics.reset_current()
+        agent._reset_skill_state()
 
 
 def set_agent_busy(is_busy: bool = True) -> None:
-    with web_app.agent.lock:
-        web_app.agent.is_generating = is_busy
+    agent = web_app.default_runtime.agent
+    with agent.lock:
+        agent.is_generating = is_busy
 
 
 def seed_agent_state(
@@ -60,16 +62,17 @@ def seed_agent_state(
     tool_events=None,
     last_error: str = '',
 ) -> None:
-    with web_app.agent.lock:
+    agent = web_app.default_runtime.agent
+    with agent.lock:
         if messages is not None:
-            web_app.agent.messages = messages
+            agent.messages = messages
         if tool_events is not None:
-            web_app.agent.tool_events = tool_events
-        web_app.agent.last_error = last_error
+            agent.tool_events = tool_events
+        agent.last_error = last_error
 
 
 def setup_function():
-    web_app.worker = None
+    web_app.default_runtime.worker = None
     reset_web_agent()
 
 
@@ -131,9 +134,10 @@ def test_state_hides_system_and_tool_messages():
 
 def test_state_includes_active_skill_policy():
     client = web_app.app.test_client()
-    with web_app.agent.lock:
-        web_app.agent.active_skill_name = 'owasp_security_review'
-        web_app.agent.active_skill_policy = {
+    agent = web_app.default_runtime.agent
+    with agent.lock:
+        agent.active_skill_name = 'owasp_security_review'
+        agent.active_skill_policy = {
             'allowed_tools': ['discover_review_targets', 'search_owasp_reference'],
             'recommended_tool_calls': [{'tool': 'discover_review_targets'}],
             'forbidden_tool_calls': [],
@@ -169,8 +173,9 @@ def test_state_returns_controlled_error_for_invalid_runtime_events(caplog):
 
 def test_state_returns_controlled_error_for_invalid_pending_approval(caplog):
     client = web_app.app.test_client()
-    with web_app.agent.lock:
-        web_app.agent.pending_approval = {
+    agent = web_app.default_runtime.agent
+    with agent.lock:
+        agent.pending_approval = {
             'tool': 'curl_url',
             'approval_id': 'curl:docs.python.org:123',
         }
@@ -188,8 +193,9 @@ def test_state_returns_controlled_error_for_invalid_pending_approval(caplog):
 
 def test_state_includes_pending_curl_approval():
     client = web_app.app.test_client()
-    with web_app.agent.lock:
-        web_app.agent.pending_approval = {
+    agent = web_app.default_runtime.agent
+    with agent.lock:
+        agent.pending_approval = {
             'tool': 'curl_url',
             'approval_id': 'curl:docs.python.org:123',
             'domain': 'docs.python.org',
@@ -229,34 +235,36 @@ def test_post_message_rejects_while_generation_is_active():
 
 
 def test_post_message_adds_user_message_and_starts_generation(monkeypatch):
-    client = web_app.app.test_client()
+    runtime = AgentRuntime(Agent())
+    client = web_app.create_app(runtime).test_client()
     started = []
 
     def fake_start_generation(submitted) -> bool:
-        web_app.agent.add_message(submitted)
+        runtime.agent.add_message(submitted)
         started.append(submitted)
         return True
 
-    monkeypatch.setattr(web_app, 'start_generation', fake_start_generation)
+    monkeypatch.setattr(runtime, 'start_generation', fake_start_generation)
 
     response = client.post('/api/messages', json={'content': ' hello '})
 
     assert response.status_code == 200
     assert response.get_json() == {'ok': True}
     assert started == [{'role': 'user', 'content': 'hello'}]
-    assert web_app.agent.messages[-1] == {'role': 'user', 'content': 'hello'}
+    assert runtime.agent.messages[-1] == {'role': 'user', 'content': 'hello'}
 
 
 def test_post_message_does_not_append_when_generation_start_is_rejected(monkeypatch):
-    client = web_app.app.test_client()
+    runtime = AgentRuntime(Agent())
+    client = web_app.create_app(runtime).test_client()
 
-    monkeypatch.setattr(web_app, 'start_generation', lambda submitted: False)
+    monkeypatch.setattr(runtime, 'start_generation', lambda submitted: False)
 
     response = client.post('/api/messages', json={'content': 'hello'})
 
     assert response.status_code == 409
     assert response.get_json()['error'] == 'Generation already in progress'
-    assert web_app.agent.messages == web_app.agent._initial_messages()
+    assert runtime.agent.messages == runtime.agent._initial_messages()
 
 
 def test_reset_rejects_while_generation_is_active():
@@ -281,7 +289,7 @@ def test_reset_clears_visible_conversation_when_idle():
     client = web_app.app.test_client()
     seed_agent_state(
         messages=[
-            *web_app.agent._initial_messages(),
+            *web_app.default_runtime.agent._initial_messages(),
             {'role': 'user', 'content': 'hello'},
         ],
         tool_events=[{'kind': 'tool'}],
@@ -373,20 +381,20 @@ def test_baseline_metrics_route_records_errors():
     assert runtime.agent.metrics.snapshot()['baseline']['error'] == 'baseline failed'
 
 
-def test_create_app_can_use_isolated_runtime():
+def test_create_app_can_use_isolated_runtime(monkeypatch):
     isolated_runtime = AgentRuntime(Agent())
     started = []
-    isolated_app = web_app.create_app(
-        isolated_runtime,
-        start_generation_func=lambda submitted: started.append(submitted) or True,
-    )
+
+    monkeypatch.setattr(isolated_runtime, 'start_generation', lambda submitted: started.append(submitted) or True)
+
+    isolated_app = web_app.create_app(isolated_runtime)
     client = isolated_app.test_client()
 
     response = client.post('/api/messages', json={'content': 'isolated'})
 
     assert response.status_code == 200
     assert started == [{'role': 'user', 'content': 'isolated'}]
-    assert web_app.agent.messages == web_app.agent._initial_messages()
+    assert web_app.default_runtime.agent.messages == web_app.default_runtime.agent._initial_messages()
 
 
 def test_runtime_resume_with_tool_result_clears_pending_after_reserving_generation():
