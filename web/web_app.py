@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import threading
 import logging
 from pathlib import Path
 from typing import Any
@@ -216,21 +215,7 @@ def create_app(
 
 
 default_runtime = AgentRuntime()
-agent = default_runtime.agent
-worker: threading.Thread | None = None
-state_lock = default_runtime.state_lock
-
-
-def start_generation(submitted: dict[str, Any] | None = None) -> bool:
-    global worker
-
-    default_runtime.worker = worker
-    started = default_runtime.start_generation(submitted)
-    worker = default_runtime.worker
-    return started
-
-
-app = create_app(default_runtime, start_generation_func=lambda submitted: start_generation(submitted))
+app = create_app(default_runtime)
 
 def run() -> None:
     app.run(
