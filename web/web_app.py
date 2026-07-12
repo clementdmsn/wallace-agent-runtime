@@ -68,10 +68,7 @@ def model_safe_curl_result(result: Any) -> dict[str, Any]:
     return {"status": "error", "error": str(result)}
 
 
-def create_app(
-    runtime: AgentRuntime | None = None,
-    start_generation_func: Any | None = None,
-) -> Flask:
+def create_app(runtime: AgentRuntime | None = None) -> Flask:
     runtime = runtime or AgentRuntime()
     app = Flask(__name__, static_folder=str(STATIC_DIR), static_url_path="")
     register_metrics_routes(app, runtime)
@@ -130,8 +127,7 @@ def create_app(
         if not content:
             return jsonify({"ok": False, "error": "Empty message"}), 400
 
-        starter = start_generation_func or runtime.start_generation
-        started = starter({"role": "user", "content": content})
+        started = runtime.start_generation({"role": "user", "content": content})
         if not started:
             return jsonify({"ok": False, "error": "Generation already in progress"}), 409
 

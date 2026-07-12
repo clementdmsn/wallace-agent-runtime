@@ -381,13 +381,13 @@ def test_baseline_metrics_route_records_errors():
     assert runtime.agent.metrics.snapshot()['baseline']['error'] == 'baseline failed'
 
 
-def test_create_app_can_use_isolated_runtime():
+def test_create_app_can_use_isolated_runtime(monkeypatch):
     isolated_runtime = AgentRuntime(Agent())
     started = []
-    isolated_app = web_app.create_app(
-        isolated_runtime,
-        start_generation_func=lambda submitted: started.append(submitted) or True,
-    )
+
+    monkeypatch.setattr(isolated_runtime, 'start_generation', lambda submitted: started.append(submitted) or True)
+
+    isolated_app = web_app.create_app(isolated_runtime)
     client = isolated_app.test_client()
 
     response = client.post('/api/messages', json={'content': 'isolated'})
