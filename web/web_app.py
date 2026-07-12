@@ -16,8 +16,7 @@ from tools.tools import TOOLS
 from web.metrics_routes import register_metrics_routes
 
 
-BASE_DIR = Path(__file__).resolve().parent
-STATIC_DIR = BASE_DIR
+STATIC_DIR = Path(__file__).resolve().parent
 logger = logging.getLogger(__name__)
 
 # return only messages that are not system, tool or that have no context
