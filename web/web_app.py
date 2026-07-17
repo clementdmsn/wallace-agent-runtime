@@ -10,7 +10,7 @@ from pydantic import ValidationError
 from agent.runtime import AgentRuntime
 from agent.agent_tool_execution import validate_registered_tool_result
 from config import SETTINGS, env_bool
-from contracts.api import ApiErrorResponse, RuntimeStateResponse
+from contracts.api import ApiErrorResponse
 from tools.curl_tool import add_domain_to_whitelist
 from tools.tools import TOOLS
 from web.metrics_routes import register_metrics_routes
@@ -18,40 +18,6 @@ from web.metrics_routes import register_metrics_routes
 
 STATIC_DIR = Path(__file__).resolve().parent
 logger = logging.getLogger(__name__)
-
-# return only messages that are not system, tool or that have no context
-def visible_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    visible: list[dict[str, Any]] = []
-    for message in messages:
-        role = str(message.get("role", "assistant"))
-        if role in {"system", "tool"}:
-            continue
-        if role not in {"user", "assistant"}:
-            continue
-
-        content = message.get("content") or ""
-        if role == "assistant" and not content and message.get("tool_calls"):
-            continue
-
-        visible.append({
-            "role": role,
-            "content": str(content),
-        })
-    return visible
-
-
-# return serialized list of tools events
-def serialize_tool_events(tool_events: list[Any]) -> list[Any]:
-    serialized: list[Any] = []
-    for event in tool_events:
-        if isinstance(event, (dict, list, str, int, float, bool)) or event is None:
-            serialized.append(event)
-        else:
-            try:
-                serialized.append(event.__dict__)
-            except AttributeError:
-                serialized.append(str(event))
-    return serialized
 
 
 def model_safe_curl_result(result: Any) -> dict[str, Any]:
@@ -91,26 +57,7 @@ def create_app(runtime: AgentRuntime | None = None) -> Flask:
     @app.get("/api/state")
     def get_state() -> Any:
         try:
-            with runtime.agent.lock:
-                messages = [dict(message) for message in runtime.agent.messages]
-                tool_events = [dict(event) for event in runtime.agent.tool_events]
-                runtime_metrics = runtime.agent.metrics.snapshot()
-                last_error = runtime.agent.last_error
-                is_generating = runtime.agent.is_generating
-                pending_approval = runtime.agent.snapshot_pending_approval()
-                active_skill_name = runtime.agent.active_skill_name
-                active_skill_policy = dict(runtime.agent.active_skill_policy or {})
-
-            state = RuntimeStateResponse(
-                messages=visible_messages(messages),
-                tool_events=serialize_tool_events(tool_events),
-                runtime_metrics=runtime_metrics,
-                active_skill_name=active_skill_name,
-                active_skill_policy=active_skill_policy,
-                is_generating=is_generating,
-                last_error=last_error,
-                pending_approval=pending_approval,
-            )
+            state = runtime.snapshot_state()
         except ValidationError:
             logger.exception("runtime state contract validation failed")
             error = ApiErrorResponse(error="Runtime state failed contract validation.")
