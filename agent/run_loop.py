@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from agent.agent_skill_policy import validate_final_response_against_skill_policy
+from agent import model_lifecycle
 
 
 def call_model(agent: Any, run_id: int | None = None) -> str | None:
@@ -22,7 +23,7 @@ def call_model(agent: Any, run_id: int | None = None) -> str | None:
                     return None
                 agent.loop_turn = turn_index
 
-            response = agent._call_model_once(run_id)
+            response = model_lifecycle.call_model_once(agent, run_id)
             if response is None:
                 return None
 

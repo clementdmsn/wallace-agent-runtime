@@ -29,7 +29,7 @@ def prepare_model_call(agent: Any, run_id: int) -> tuple[list[dict[str, Any]], i
     with agent.lock:
         if not agent._is_current_run(run_id):
             return None
-        request_messages = [agent._normalize_message_for_api(dict(message)) for message in agent.messages]
+        request_messages = [normalize_message_for_api(dict(message)) for message in agent.messages]
         if request_messages and agent.request_system_prompt:
             request_messages[0]['content'] = agent.request_system_prompt
         turn_index = agent.loop_turn
@@ -127,12 +127,12 @@ def fail_model_call(
 
 
 def call_model_once(agent: Any, run_id: int) -> dict[str, Any] | None:
-    prepared = agent._prepare_model_call(run_id)
+    prepared = prepare_model_call(agent, run_id)
     if prepared is None:
         return None
     request_messages, turn_index, model_call_index = prepared
 
-    assistant_message = agent._append_assistant_placeholder(run_id)
+    assistant_message = append_assistant_placeholder(agent, run_id)
     if assistant_message is None:
         return None
 
@@ -147,7 +147,7 @@ def call_model_once(agent: Any, run_id: int) -> dict[str, Any] | None:
 
         if not consume_model_stream(agent, stream, run_id, model_call_index, assistant_message):
             return None
-        return agent._finish_model_call(run_id, model_call_index, turn_index, assistant_message)
+        return finish_model_call(agent, run_id, model_call_index, turn_index, assistant_message)
 
     except Exception as exc:
-        return agent._fail_model_call(run_id, model_call_index, turn_index, assistant_message, exc)
+        return fail_model_call(agent, run_id, model_call_index, turn_index, assistant_message, exc)

@@ -13,14 +13,6 @@ from agent.agent_skill_policy import (
 )
 from agent.agent_tool_execution import execute_tool_call
 from agent.final_response_policy import handle_skill_policy_blocked_final_response
-from agent.model_lifecycle import (
-    append_assistant_placeholder,
-    call_model_once,
-    fail_model_call,
-    finish_model_call,
-    normalize_message_for_api,
-    prepare_model_call,
-)
 from agent.run_trace import RunTrace
 from agent.runtime_components import AgentRunner, ApprovalRuntime, GenerationRuntime
 from agent.runtime_state import (
@@ -193,39 +185,11 @@ class Agent:
     def _finish_generation(self, run_id: int):
         self.generation.finish(run_id)
 
-    def _normalize_message_for_api(self, message: dict[str, Any]) -> dict[str, Any]:
-        return normalize_message_for_api(message)
-
     def _latest_user_text(self) -> str:
         return latest_user_text(self)
 
     def _skill_selection_text_for_latest_user(self) -> str:
         return skill_selection_text_for_latest_user(self)
-
-    def _prepare_model_call(self, run_id: int) -> tuple[list[dict[str, Any]], int, int | None] | None:
-        return prepare_model_call(self, run_id)
-
-    def _append_assistant_placeholder(self, run_id: int) -> dict[str, Any] | None:
-        return append_assistant_placeholder(self, run_id)
-
-    def _finish_model_call(
-        self,
-        run_id: int,
-        model_call_index: int | None,
-        turn_index: int,
-        assistant_message: dict[str, Any],
-    ) -> dict[str, Any] | None:
-        return finish_model_call(self, run_id, model_call_index, turn_index, assistant_message)
-
-    def _fail_model_call(
-        self,
-        run_id: int,
-        model_call_index: int | None,
-        turn_index: int,
-        assistant_message: dict[str, Any],
-        exc: Exception,
-    ) -> dict[str, Any] | None:
-        return fail_model_call(self, run_id, model_call_index, turn_index, assistant_message, exc)
 
     def _select_skill_for_current_request(self) -> dict[str, Any] | None:
         return select_skill_for_current_request(self)
@@ -242,9 +206,6 @@ class Agent:
         selected_skill: dict[str, Any] | None,
     ) -> bool:
         return configure_request_skill(self, run_id, selected_skill)
-
-    def _call_model_once(self, run_id: int) -> dict[str, Any] | None:
-        return call_model_once(self, run_id)
 
     def _execute_callable(self, tool_call: dict[str, Any], run_id: int) -> bool:
         return execute_tool_call(self, tool_call, run_id)
