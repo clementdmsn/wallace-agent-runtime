@@ -417,7 +417,7 @@ def test_runtime_resume_with_tool_result_clears_pending_after_reserving_generati
     runtime.agent.pending_approval = dict(pending)
 
     def finish_immediately(run_id):
-        runtime.agent._finish_generation(run_id)
+        runtime.agent.generation.finish(run_id)
 
     runtime.agent.call_model = finish_immediately
 
