@@ -4,6 +4,7 @@ from typing import Any
 
 from agent.agent_skill_policy import validate_final_response_against_skill_policy
 from agent import model_lifecycle
+from agent import skill_selection
 
 
 def call_model(agent: Any, run_id: int | None = None) -> str | None:
@@ -13,8 +14,8 @@ def call_model(agent: Any, run_id: int | None = None) -> str | None:
         return None
 
     try:
-        selected_skill = agent._select_skill_for_current_request()
-        if not agent._configure_request_skill(run_id, selected_skill):
+        selected_skill = skill_selection.select_skill_for_current_request(agent)
+        if not skill_selection.configure_request_skill(agent, run_id, selected_skill):
             return None
 
         for turn_index in range(0, agent.MAX_AUTO_TURNS):

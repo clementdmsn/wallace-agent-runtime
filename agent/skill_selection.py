@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from system_prompt.system_prompt import build_request_system_prompt
+from agent.agent_skill_policy import set_skill_state_from_selection
 from contracts.events import SkillPolicyEvent, SkillSelectionEvent, SkillSelectionEventStatus
 from skills.intent import extract_intent
 
@@ -27,7 +28,7 @@ def latest_user_text(agent: Any) -> str:
 
 
 def skill_selection_text_for_latest_user(agent: Any) -> str:
-    user_text = agent._latest_user_text().strip()
+    user_text = latest_user_text(agent).strip()
     if agent.last_fulfilled_skill_name != 'owasp_security_review':
         return user_text
 
@@ -60,17 +61,18 @@ def append_skill_policy_event(agent: Any, event: SkillPolicyEvent) -> None:
 
 
 def select_skill_for_current_request(agent: Any) -> dict[str, Any] | None:
-    user_text = agent._latest_user_text().strip()
+    user_text = latest_user_text(agent).strip()
     if not user_text:
         return None
-    selection_text = agent._skill_selection_text_for_latest_user()
+    selection_text = skill_selection_text_for_latest_user(agent)
 
     try:
         agent._trace('skill_selection_started', user_message=user_text, selection_text=selection_text)
         result = agent._request_skill_for_intent(selection_text)
     except Exception as exc:
         with agent.lock:
-            agent._append_skill_selection_event(
+            append_skill_selection_event(
+                agent,
                 SkillSelectionEvent(
                     kind='skill_selection',
                     status='error',
@@ -81,7 +83,8 @@ def select_skill_for_current_request(agent: Any) -> dict[str, Any] | None:
         return None
 
     with agent.lock:
-        agent._append_skill_selection_event(
+        append_skill_selection_event(
+            agent,
             SkillSelectionEvent(
                 kind='skill_selection',
                 status=skill_selection_event_status(result.get('status')),
@@ -106,7 +109,7 @@ def configure_request_skill(agent: Any, run_id: int, selected_skill: dict[str, A
         if not agent._is_current_run(run_id):
             return False
         agent.active_skill_selection = selected_skill
-        agent._set_skill_state_from_selection(selected_skill or {})
+        set_skill_state_from_selection(agent, selected_skill or {})
         base_prompt = str(agent.messages[0].get('content', '')) if agent.messages else ''
         agent.request_system_prompt = build_request_system_prompt(base_prompt, selected_skill)
         if agent.metrics.current_request:

@@ -23,23 +23,8 @@ from agent.runtime_state import (
     snapshot_tool_events,
     trace,
 )
-from agent.skill_selection import (
-    append_skill_policy_event,
-    append_skill_selection_event,
-    configure_request_skill,
-    latest_user_text,
-    select_skill_for_current_request,
-    skill_selection_event_status as normalize_skill_selection_event_status,
-    skill_selection_text_for_latest_user,
-)
-from contracts.events import SkillPolicyEvent, SkillSelectionEvent, SkillSelectionEventStatus
 from config import SETTINGS
 from skills.skills import record_skill_event, request_skill_for_intent
-
-
-def skill_selection_event_status(value: object) -> SkillSelectionEventStatus:
-    return normalize_skill_selection_event_status(value)
-
 
 class Agent:
     def __init__(self):
@@ -184,28 +169,6 @@ class Agent:
 
     def _finish_generation(self, run_id: int):
         self.generation.finish(run_id)
-
-    def _latest_user_text(self) -> str:
-        return latest_user_text(self)
-
-    def _skill_selection_text_for_latest_user(self) -> str:
-        return skill_selection_text_for_latest_user(self)
-
-    def _select_skill_for_current_request(self) -> dict[str, Any] | None:
-        return select_skill_for_current_request(self)
-
-    def _append_skill_selection_event(self, event: SkillSelectionEvent) -> None:
-        append_skill_selection_event(self, event)
-
-    def _append_skill_policy_event(self, event: SkillPolicyEvent) -> None:
-        append_skill_policy_event(self, event)
-
-    def _configure_request_skill(
-        self,
-        run_id: int,
-        selected_skill: dict[str, Any] | None,
-    ) -> bool:
-        return configure_request_skill(self, run_id, selected_skill)
 
     def _execute_callable(self, tool_call: dict[str, Any], run_id: int) -> bool:
         return execute_tool_call(self, tool_call, run_id)
