@@ -3,17 +3,19 @@ from __future__ import annotations
 from typing import Any
 
 from agent.agent_skill_policy import validate_final_response_against_skill_policy
+from agent import model_lifecycle
+from agent import skill_selection
 
 
 def call_model(agent: Any, run_id: int | None = None) -> str | None:
     if run_id is None:
-        run_id = agent._start_generation()
+        run_id = agent.generation.reserve()
     if run_id is None:
         return None
 
     try:
-        selected_skill = agent._select_skill_for_current_request()
-        if not agent._configure_request_skill(run_id, selected_skill):
+        selected_skill = skill_selection.select_skill_for_current_request(agent)
+        if not skill_selection.configure_request_skill(agent, run_id, selected_skill):
             return None
 
         for turn_index in range(0, agent.MAX_AUTO_TURNS):
@@ -22,7 +24,7 @@ def call_model(agent: Any, run_id: int | None = None) -> str | None:
                     return None
                 agent.loop_turn = turn_index
 
-            response = agent._call_model_once(run_id)
+            response = model_lifecycle.call_model_once(agent, run_id)
             if response is None:
                 return None
 
@@ -76,4 +78,4 @@ def call_model(agent: Any, run_id: int | None = None) -> str | None:
             agent._record_skill_event(agent.active_skill_name, 'failure')
         return None
     finally:
-        agent._finish_generation(run_id)
+        agent.generation.finish(run_id)

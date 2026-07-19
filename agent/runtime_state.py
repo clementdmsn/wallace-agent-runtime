@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from agent.skill_selection import latest_user_text
+
 logger = logging.getLogger(__name__)
 
 
@@ -54,7 +56,7 @@ def reserve_generation(agent: Any, submitted: dict[str, Any] | None = None) -> i
         if agent.is_generating:
             return None
         if submitted is not None:
-            agent._append_message_locked(submitted)
+            append_message_locked(agent, submitted)
         agent.is_generating = True
         agent.last_error = ''
         agent.loop_turn = 0
@@ -63,7 +65,7 @@ def reserve_generation(agent: Any, submitted: dict[str, Any] | None = None) -> i
         system_prompt = str(agent.messages[0].get('content', '')) if agent.messages else ''
         agent.metrics.start_request(current_run_id, agent.model, len(system_prompt))
         agent.run_trace = agent._start_run_trace(current_run_id)
-        latest_user = agent._latest_user_text()
+        latest_user = latest_user_text(agent)
         agent._trace(
             'run_started',
             model=agent.model,

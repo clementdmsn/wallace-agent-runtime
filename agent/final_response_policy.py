@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from contracts.events import SkillPolicyEvent
+from agent.skill_selection import append_skill_policy_event
 
 
 def handle_skill_policy_blocked_final_response(
@@ -24,7 +25,8 @@ def handle_skill_policy_blocked_final_response(
                 'Do not cite OWASP from memory. Do not provide a final answer until the required tool succeeds.'
             ),
         })
-        agent._append_skill_policy_event(
+        append_skill_policy_event(
+            agent,
             SkillPolicyEvent(
                 kind='skill_policy',
                 status='error',

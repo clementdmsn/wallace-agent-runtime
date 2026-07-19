@@ -3,6 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from agent import agent as agent_module
+from agent import model_lifecycle
 from agent.model_streaming import apply_content_delta, apply_tool_call_delta, consume_model_stream
 
 
@@ -30,7 +31,7 @@ def test_call_model_removes_done_token_message(monkeypatch):
         wallace.messages.append({'role': 'assistant', 'content': wallace.DONE})
         return {'role': 'assistant', 'content': wallace.DONE}
 
-    monkeypatch.setattr(wallace, '_call_model_once', fake_call_model_once)
+    monkeypatch.setattr(model_lifecycle, 'call_model_once', lambda agent, run_id: fake_call_model_once(run_id))
 
     assert wallace.call_model() == wallace.DONE
     assert wallace.messages[-1]['role'] == 'user'
@@ -46,7 +47,7 @@ def test_call_model_removes_empty_response_and_records_error(monkeypatch):
         wallace.messages.append({'role': 'assistant', 'content': ''})
         return {'role': 'assistant', 'content': ''}
 
-    monkeypatch.setattr(wallace, '_call_model_once', fake_call_model_once)
+    monkeypatch.setattr(model_lifecycle, 'call_model_once', lambda agent, run_id: fake_call_model_once(run_id))
 
     assert wallace.call_model() is None
     assert wallace.last_error == 'Model returned an empty response.'
@@ -60,9 +61,9 @@ def test_call_model_stops_after_max_auto_turns(monkeypatch):
     seed_messages(wallace)
 
     monkeypatch.setattr(
-        wallace,
-        '_call_model_once',
-        lambda run_id: {'role': 'assistant', 'content': '', 'tool_calls': [{'id': '1'}]},
+        model_lifecycle,
+        'call_model_once',
+        lambda agent, run_id: {'role': 'assistant', 'content': '', 'tool_calls': [{'id': '1'}]},
     )
     monkeypatch.setattr(wallace, '_execute_callable', lambda tool_call, run_id: True)
 
@@ -81,7 +82,7 @@ def test_call_model_executes_tool_calls_then_returns_content(monkeypatch):
         {'role': 'assistant', 'content': 'final answer'},
     ])
 
-    monkeypatch.setattr(wallace, '_call_model_once', lambda run_id: next(responses))
+    monkeypatch.setattr(model_lifecycle, 'call_model_once', lambda agent, run_id: next(responses))
     monkeypatch.setattr(wallace, '_execute_callable', lambda tool_call, run_id: calls.append(tool_call) or True)
 
     assert wallace.call_model() == 'final answer'
@@ -131,7 +132,7 @@ def test_owasp_review_blocks_final_answer_until_reference_search(monkeypatch):
         wallace.owasp_reference_search_count += 1
         return True
 
-    monkeypatch.setattr(wallace, '_call_model_once', fake_call_model_once)
+    monkeypatch.setattr(model_lifecycle, 'call_model_once', lambda agent, run_id: fake_call_model_once(run_id))
     monkeypatch.setattr(wallace, '_execute_callable', fake_execute)
 
     assert wallace.call_model() == 'Critical finding with returned OWASP citation'
@@ -149,9 +150,9 @@ def test_call_model_stops_when_tool_execution_reports_stale(monkeypatch):
     seed_messages(wallace)
 
     monkeypatch.setattr(
-        wallace,
-        '_call_model_once',
-        lambda run_id: {'role': 'assistant', 'content': '', 'tool_calls': [{'id': 'tool-1'}]},
+        model_lifecycle,
+        'call_model_once',
+        lambda agent, run_id: {'role': 'assistant', 'content': '', 'tool_calls': [{'id': 'tool-1'}]},
     )
     monkeypatch.setattr(wallace, '_execute_callable', lambda tool_call, run_id: False)
 
@@ -166,7 +167,7 @@ def test_call_model_handles_skill_selection_failure(monkeypatch):
     monkeypatch.setattr(agent_module, 'request_skill_for_intent', raise_selection)
     wallace = agent_module.Agent()
     seed_messages(wallace)
-    monkeypatch.setattr(wallace, '_call_model_once', lambda run_id: {'role': 'assistant', 'content': 'ok'})
+    monkeypatch.setattr(model_lifecycle, 'call_model_once', lambda agent, run_id: {'role': 'assistant', 'content': 'ok'})
 
     assert wallace.call_model() == 'ok'
     assert wallace.tool_events[0]['kind'] == 'skill_selection'
@@ -181,7 +182,7 @@ def test_call_model_records_unknown_skill_selection_status(monkeypatch):
     )
     wallace = agent_module.Agent()
     seed_messages(wallace)
-    monkeypatch.setattr(wallace, '_call_model_once', lambda run_id: {'role': 'assistant', 'content': 'ok'})
+    monkeypatch.setattr(model_lifecycle, 'call_model_once', lambda agent, run_id: {'role': 'assistant', 'content': 'ok'})
 
     assert wallace.call_model() == 'ok'
     assert wallace.tool_events[0]['kind'] == 'skill_selection'
@@ -200,7 +201,7 @@ def test_call_model_once_records_api_failure():
 
     wallace.client = SimpleNamespace(chat=SimpleNamespace(completions=FailingCompletions()))
 
-    response = wallace._call_model_once(run_id)
+    response = model_lifecycle.call_model_once(wallace, run_id)
 
     assert response == {'role': 'assistant', 'content': '[Error: api failed]'}
     assert wallace.last_error == 'api failed'
@@ -214,8 +215,8 @@ def test_prepare_model_call_injects_request_system_prompt():
     run_id = wallace.reserve_generation()
     assert run_id is not None
 
-    prepared = wallace._prepare_model_call(run_id)
-    wallace._finish_generation(run_id)
+    prepared = model_lifecycle.prepare_model_call(wallace, run_id)
+    wallace.generation.finish(run_id)
 
     assert prepared is not None
     request_messages, turn_index, model_call_index = prepared
@@ -239,8 +240,8 @@ def test_prepare_model_call_compacts_duplicate_tool_content():
     run_id = wallace.reserve_generation()
     assert run_id is not None
 
-    prepared = wallace._prepare_model_call(run_id)
-    wallace._finish_generation(run_id)
+    prepared = model_lifecycle.prepare_model_call(wallace, run_id)
+    wallace.generation.finish(run_id)
 
     assert prepared is not None
     request_messages, _, _ = prepared
@@ -271,8 +272,8 @@ def test_prepare_model_call_traces_compaction_metadata(monkeypatch):
     run_id = wallace.reserve_generation()
     assert run_id is not None
 
-    prepared = wallace._prepare_model_call(run_id)
-    wallace._finish_generation(run_id)
+    prepared = model_lifecycle.prepare_model_call(wallace, run_id)
+    wallace.generation.finish(run_id)
 
     assert prepared is not None
     compaction_event = next(event for event in events if event['event'] == 'context_compaction_applied')
@@ -308,8 +309,8 @@ def test_call_model_once_sends_compacted_messages_to_api():
     run_id = wallace.reserve_generation()
     assert run_id is not None
 
-    response = wallace._call_model_once(run_id)
-    wallace._finish_generation(run_id)
+    response = model_lifecycle.call_model_once(wallace, run_id)
+    wallace.generation.finish(run_id)
 
     assert response == {'role': 'assistant', 'content': 'ok'}
     assert captured['messages'][2]['content'].startswith('[CTXBLOCK msg=2 role=tool]')

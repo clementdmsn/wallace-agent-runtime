@@ -3,6 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from agent import agent as agent_module
+from agent import model_lifecycle
 from agent.model_streaming import fallback_tool_call_id
 
 
@@ -41,7 +42,7 @@ def test_call_model_selects_skill_and_builds_request_prompt(monkeypatch):
         assert wallace.messages[0]['content'] == 'base prompt'
         return {'role': 'assistant', 'content': 'done'}
 
-    monkeypatch.setattr(wallace, '_call_model_once', fake_call_model_once)
+    monkeypatch.setattr(model_lifecycle, 'call_model_once', lambda agent, run_id: fake_call_model_once(run_id))
 
     assert wallace.call_model() == 'done'
     assert ('demo_skill', 'fulfilled') in events
@@ -66,7 +67,7 @@ def test_call_model_leaves_prompt_clean_when_no_skill(monkeypatch):
         assert wallace.request_system_prompt == 'base prompt'
         return {'role': 'assistant', 'content': 'plain answer'}
 
-    monkeypatch.setattr(wallace, '_call_model_once', fake_call_model_once)
+    monkeypatch.setattr(model_lifecycle, 'call_model_once', lambda agent, run_id: fake_call_model_once(run_id))
 
     assert wallace.call_model() == 'plain answer'
 
@@ -83,7 +84,7 @@ def test_followup_review_carries_prior_owasp_skill_context(monkeypatch):
     wallace = agent_module.Agent()
     seed_messages(wallace, 'now review security_medium.py')
     wallace.last_fulfilled_skill_name = 'owasp_security_review'
-    monkeypatch.setattr(wallace, '_call_model_once', lambda run_id: {'role': 'assistant', 'content': 'ok'})
+    monkeypatch.setattr(model_lifecycle, 'call_model_once', lambda agent, run_id: {'role': 'assistant', 'content': 'ok'})
 
     assert wallace.call_model() == 'ok'
     assert seen_texts == ['OWASP security review security_medium.py']
@@ -124,7 +125,7 @@ def test_streamed_tool_call_without_backend_id_gets_stable_fallback_id():
         chat=SimpleNamespace(completions=FakeCompletions())
     )
 
-    response = wallace._call_model_once(run_id)
+    response = model_lifecycle.call_model_once(wallace, run_id)
 
     assert response is not None
     tool_call = response['tool_calls'][0]
@@ -187,7 +188,7 @@ def test_streamed_tool_call_chunks_are_assembled_by_index():
         chat=SimpleNamespace(completions=FakeCompletions())
     )
 
-    response = wallace._call_model_once(run_id)
+    response = model_lifecycle.call_model_once(wallace, run_id)
 
     assert response is not None
     assert response['tool_calls'] == [
