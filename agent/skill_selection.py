@@ -5,8 +5,10 @@ from typing import Any
 
 from system_prompt.system_prompt import build_request_system_prompt
 from agent.agent_skill_policy import set_skill_state_from_selection
+from agent.runtime_state import is_current_run, latest_user_text, trace
 from contracts.events import SkillPolicyEvent, SkillSelectionEvent, SkillSelectionEventStatus
 from skills.intent import extract_intent
+from skills.skills import request_skill_for_intent
 
 
 def skill_selection_event_status(value: object) -> SkillSelectionEventStatus:
@@ -15,16 +17,6 @@ def skill_selection_event_status(value: object) -> SkillSelectionEventStatus:
     if value == SkillSelectionEventStatus.ERROR or value == SkillSelectionEventStatus.ERROR.value:
         return SkillSelectionEventStatus.ERROR
     return SkillSelectionEventStatus.UNKNOWN
-
-
-def latest_user_text(agent: Any) -> str:
-    with agent.lock:
-        for message in reversed(agent.messages):
-            if message.get('role') == 'user':
-                content = message.get('content')
-                if isinstance(content, str):
-                    return content
-    return ''
 
 
 def skill_selection_text_for_latest_user(agent: Any) -> str:
@@ -67,8 +59,8 @@ def select_skill_for_current_request(agent: Any) -> dict[str, Any] | None:
     selection_text = skill_selection_text_for_latest_user(agent)
 
     try:
-        agent._trace('skill_selection_started', user_message=user_text, selection_text=selection_text)
-        result = agent._request_skill_for_intent(selection_text)
+        trace(agent, 'skill_selection_started', user_message=user_text, selection_text=selection_text)
+        result = request_skill_for_intent(selection_text)
     except Exception as exc:
         with agent.lock:
             append_skill_selection_event(
@@ -79,7 +71,7 @@ def select_skill_for_current_request(agent: Any) -> dict[str, Any] | None:
                     error=str(exc),
                 )
             )
-            agent._trace('skill_selection_failed', error=str(exc))
+            trace(agent, 'skill_selection_failed', error=str(exc))
         return None
 
     with agent.lock:
@@ -92,7 +84,8 @@ def select_skill_for_current_request(agent: Any) -> dict[str, Any] | None:
                 selection=result.get('selection'),
             )
         )
-        agent._trace(
+        trace(
+            agent,
             'skill_selection_finished',
             status=result.get('status'),
             skill_name=result.get('skill_name'),
@@ -106,7 +99,7 @@ def select_skill_for_current_request(agent: Any) -> dict[str, Any] | None:
 
 def configure_request_skill(agent: Any, run_id: int, selected_skill: dict[str, Any] | None) -> bool:
     with agent.lock:
-        if not agent._is_current_run(run_id):
+        if not is_current_run(agent, run_id):
             return False
         agent.active_skill_selection = selected_skill
         set_skill_state_from_selection(agent, selected_skill or {})
@@ -114,7 +107,8 @@ def configure_request_skill(agent: Any, run_id: int, selected_skill: dict[str, A
         agent.request_system_prompt = build_request_system_prompt(base_prompt, selected_skill)
         if agent.metrics.current_request:
             agent.metrics.current_request['estimated_system_prompt_chars'] = len(agent.request_system_prompt)
-        agent._trace(
+        trace(
+            agent,
             'request_system_prompt_built',
             active_skill_name=agent.active_skill_name,
             active_skill_selection=(

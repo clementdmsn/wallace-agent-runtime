@@ -10,9 +10,21 @@ from contracts.events import PendingApproval
 from tools.tool_registry import Tool
 
 
+class FakeTrace:
+    def __init__(self, events: list[dict[str, object]]):
+        self.events = events
+
+    def payload(self, value):
+        return value
+
+    def record(self, event: str, **fields) -> None:
+        self.events.append({'event': event, **fields})
+
+
 class FakeAgent:
     def __init__(self):
         self.lock = threading.RLock()
+        self.run_id = 7
         self.messages = []
         self.tool_events = []
         self.active_skill_name = None
@@ -23,18 +35,13 @@ class FakeAgent:
         self.metrics = None
         self.last_error = ''
         self.trace_events = []
-        self.run_trace = None
+        self.run_trace = FakeTrace(self.trace_events)
         self.notifications = 0
+        self.on_stream = self.notify_stream
         self.pending_approval = None
 
-    def _is_current_run(self, run_id: int) -> bool:
-        return run_id == 7
-
-    def _notify_stream(self) -> None:
+    def notify_stream(self) -> None:
         self.notifications += 1
-
-    def _trace(self, event: str, **fields) -> None:
-        self.trace_events.append({'event': event, **fields})
 
     def set_pending_approval(self, tool_name, args, result, call_id='') -> None:
         self.pending_approval = PendingApproval(

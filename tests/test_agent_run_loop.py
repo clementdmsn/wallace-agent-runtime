@@ -4,6 +4,8 @@ from types import SimpleNamespace
 
 from agent import agent as agent_module
 from agent import model_lifecycle
+from agent import run_loop
+from agent import skill_selection
 from agent.model_streaming import apply_content_delta, apply_tool_call_delta, consume_model_stream
 
 
@@ -16,7 +18,7 @@ def seed_messages(wallace, user_content: str = 'hello') -> None:
 
 def disable_skill_selection(monkeypatch) -> None:
     monkeypatch.setattr(
-        agent_module,
+        skill_selection,
         'request_skill_for_intent',
         lambda text: {'status': 'ok', 'skill_name': None, 'selection': {}},
     )
@@ -65,7 +67,7 @@ def test_call_model_stops_after_max_auto_turns(monkeypatch):
         'call_model_once',
         lambda agent, run_id: {'role': 'assistant', 'content': '', 'tool_calls': [{'id': '1'}]},
     )
-    monkeypatch.setattr(wallace, '_execute_callable', lambda tool_call, run_id: True)
+    monkeypatch.setattr(run_loop, 'execute_tool_call', lambda agent, tool_call, run_id: True)
 
     assert wallace.call_model() is None
     assert wallace.last_error == f'Stopped after 2 turns without receiving {wallace.DONE}.'
@@ -83,7 +85,7 @@ def test_call_model_executes_tool_calls_then_returns_content(monkeypatch):
     ])
 
     monkeypatch.setattr(model_lifecycle, 'call_model_once', lambda agent, run_id: next(responses))
-    monkeypatch.setattr(wallace, '_execute_callable', lambda tool_call, run_id: calls.append(tool_call) or True)
+    monkeypatch.setattr(run_loop, 'execute_tool_call', lambda agent, tool_call, run_id: calls.append(tool_call) or True)
 
     assert wallace.call_model() == 'final answer'
     assert calls == [{'id': 'tool-1'}]
@@ -91,7 +93,7 @@ def test_call_model_executes_tool_calls_then_returns_content(monkeypatch):
 
 def test_owasp_review_blocks_final_answer_until_reference_search(monkeypatch):
     monkeypatch.setattr(
-        agent_module,
+        skill_selection,
         'request_skill_for_intent',
         lambda text: {
             'status': 'ok',
@@ -128,12 +130,12 @@ def test_owasp_review_blocks_final_answer_until_reference_search(monkeypatch):
         wallace.messages.append(dict(response))
         return response
 
-    def fake_execute(tool_call, run_id):
+    def fake_execute(agent, tool_call, run_id):
         wallace.owasp_reference_search_count += 1
         return True
 
     monkeypatch.setattr(model_lifecycle, 'call_model_once', lambda agent, run_id: fake_call_model_once(run_id))
-    monkeypatch.setattr(wallace, '_execute_callable', fake_execute)
+    monkeypatch.setattr(run_loop, 'execute_tool_call', fake_execute)
 
     assert wallace.call_model() == 'Critical finding with returned OWASP citation'
     assert wallace.owasp_reference_search_count == 1
@@ -154,7 +156,7 @@ def test_call_model_stops_when_tool_execution_reports_stale(monkeypatch):
         'call_model_once',
         lambda agent, run_id: {'role': 'assistant', 'content': '', 'tool_calls': [{'id': 'tool-1'}]},
     )
-    monkeypatch.setattr(wallace, '_execute_callable', lambda tool_call, run_id: False)
+    monkeypatch.setattr(run_loop, 'execute_tool_call', lambda agent, tool_call, run_id: False)
 
     assert wallace.call_model() is None
     assert wallace.is_generating is False
@@ -164,7 +166,7 @@ def test_call_model_handles_skill_selection_failure(monkeypatch):
     def raise_selection(text):
         raise RuntimeError('selection failed')
 
-    monkeypatch.setattr(agent_module, 'request_skill_for_intent', raise_selection)
+    monkeypatch.setattr(skill_selection, 'request_skill_for_intent', raise_selection)
     wallace = agent_module.Agent()
     seed_messages(wallace)
     monkeypatch.setattr(model_lifecycle, 'call_model_once', lambda agent, run_id: {'role': 'assistant', 'content': 'ok'})
@@ -176,7 +178,7 @@ def test_call_model_handles_skill_selection_failure(monkeypatch):
 
 def test_call_model_records_unknown_skill_selection_status(monkeypatch):
     monkeypatch.setattr(
-        agent_module,
+        skill_selection,
         'request_skill_for_intent',
         lambda text: {'status': 'pending', 'skill_name': None, 'selection': {}},
     )
@@ -262,7 +264,11 @@ def test_prepare_model_call_traces_compaction_metadata(monkeypatch):
         for index in range(1, 16)
     )
     events = []
-    monkeypatch.setattr(wallace, '_trace', lambda event, **fields: events.append({'event': event, **fields}))
+    monkeypatch.setattr(
+        model_lifecycle,
+        'trace',
+        lambda agent, event, **fields: events.append({'event': event, **fields}),
+    )
     wallace.messages = [
         {'role': 'system', 'content': 'base prompt'},
         {'role': 'user', 'content': 'hello'},

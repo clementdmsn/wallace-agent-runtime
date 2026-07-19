@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from agent.runtime_state import is_current_run, notify_stream
+
 
 def fallback_tool_call_id(run_id: int, model_call_index: int | None, tool_call_index: int) -> str:
     return f'tool_call:{run_id}:{model_call_index or 0}:{tool_call_index}'
@@ -16,11 +18,11 @@ def apply_content_delta(
 ) -> bool:
     with agent.lock:
         agent.metrics.mark_first_output(run_id, model_call_index, 'content')
-        if not agent._is_current_run(run_id):
+        if not is_current_run(agent, run_id):
             return False
         assistant_message['content'] += text
 
-    agent._notify_stream()
+    notify_stream(agent)
     return True
 
 
@@ -33,7 +35,7 @@ def apply_tool_call_delta(
     delta_tool_calls: list[Any],
 ) -> bool:
     with agent.lock:
-        if not agent._is_current_run(run_id):
+        if not is_current_run(agent, run_id):
             return False
         agent.metrics.mark_first_output(run_id, model_call_index, 'tool_call')
 
@@ -71,7 +73,7 @@ def apply_tool_call_delta(
             for i in sorted(tool_calls_by_index)
         ]
 
-    agent._notify_stream()
+    notify_stream(agent)
     return True
 
 
