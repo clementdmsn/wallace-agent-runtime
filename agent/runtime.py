@@ -4,7 +4,7 @@ import threading
 from typing import Any
 
 from agent.agent import Agent
-from agent.agent_tool_execution import append_resolved_tool_result
+from agent.tool_execution import append_resolved_tool_result
 from contracts.api import RuntimeStateResponse
 
 

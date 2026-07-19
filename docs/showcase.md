@@ -7,7 +7,7 @@ Wallace is a local OpenAI-compatible agent runtime with streamed tool calls, san
 | Capability | Where to look | Why it matters |
 |---|---|---|
 | Agent run loop | `agent/agent.py` | Multi-turn agent orchestration with streamed model calls and tool execution. |
-| Tool calling | `agent/agent_tool_execution.py`, `tools/schemas.py` | OpenAI function-call schemas, hidden tool messages, runtime events, and error handling. |
+| Tool calling | `agent/tool_execution.py`, `tools/schemas.py` | OpenAI function-call schemas, hidden tool messages, runtime events, and error handling. |
 | Sandboxed execution | `sandbox.py`, `tools/basic_tools.py` | Path validation, shell command allowlisting, and explicit file mutation tools. |
 | Skill routing | `skills/selection.py`, `skills/guidance.py` | Runtime-selected procedures with scoring, syntax validation, and task-specific guidance. |
 | Policy enforcement | `agent/skill_policy.py` | Allowed tools, forbidden tools, ordered tool calls, verified symbols, and final-answer guards. |

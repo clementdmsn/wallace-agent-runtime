@@ -45,7 +45,7 @@ arguments, execute tools server-side, append hidden tool messages, and display
 tool events in the UI.
 
 **Relevant components:** `tools/schemas.py`, `tools/tools.py`,
-`agent/agent_tool_execution.py`, `web/app.js`.
+`agent/tool_execution.py`, `web/app.js`.
 
 **Limitations:** shell access is intentionally constrained and should remain
 behind stronger isolation for shared or hosted deployments.

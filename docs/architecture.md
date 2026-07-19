@@ -12,7 +12,7 @@ Browser
     -> agent/agent.py
       -> skills/skills.py runtime skill selection
       -> OpenAI-compatible chat API
-      -> agent/agent_tool_execution.py
+      -> agent/tool_execution.py
         -> tools/tools.py registry
           -> tools/basic_tools.py
           -> tools/code_tools.py
@@ -54,7 +54,7 @@ There is no persistent multi-session backend yet. The sidebar represents the cur
 Files:
 
 - `agent/agent.py`
-- `agent/agent_tool_execution.py`
+- `agent/tool_execution.py`
 - `agent/skill_policy.py`
 - `agent/model_streaming.py`
 - `agent/run_trace.py`
@@ -62,7 +62,7 @@ Files:
 Responsibilities:
 
 - `agent.py`: conversation state, runtime skill selection, per-request system prompt assembly, and run lifecycle
-- `agent_tool_execution.py`: decode model tool calls, execute registered tools, append hidden tool messages, emit UI events
+- `tool_execution.py`: decode model tool calls, execute registered tools, append hidden tool messages, emit UI events
 - `skill_policy.py`: active skill state, policy validation, verified symbol tracking
 - `model_streaming.py`: streamed content and tool-call reconstruction
 - `run_trace.py`: optional JSONL request tracing
