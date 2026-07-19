@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from system_prompt.system_prompt import build_request_system_prompt
-from agent.agent_skill_policy import set_skill_state_from_selection
+from agent.skill_policy import set_skill_state_from_selection
 from agent.runtime_state import is_current_run, latest_user_text, trace
 from contracts.events import SkillPolicyEvent, SkillSelectionEvent, SkillSelectionEventStatus
 from skills.intent import extract_intent

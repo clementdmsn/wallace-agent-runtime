@@ -19,7 +19,7 @@ Browser
           -> tools/skill_index_tools.py
           -> tools/skill_authoring_tools.py
           -> tools/schemas.py
-      -> agent/agent_skill_policy.py
+      -> agent/skill_policy.py
         -> skills/ guidance and policy state
 ```
 
@@ -55,7 +55,7 @@ Files:
 
 - `agent/agent.py`
 - `agent/agent_tool_execution.py`
-- `agent/agent_skill_policy.py`
+- `agent/skill_policy.py`
 - `agent/model_streaming.py`
 - `agent/run_trace.py`
 
@@ -63,7 +63,7 @@ Responsibilities:
 
 - `agent.py`: conversation state, runtime skill selection, per-request system prompt assembly, and run lifecycle
 - `agent_tool_execution.py`: decode model tool calls, execute registered tools, append hidden tool messages, emit UI events
-- `agent_skill_policy.py`: active skill state, policy validation, verified symbol tracking
+- `skill_policy.py`: active skill state, policy validation, verified symbol tracking
 - `model_streaming.py`: streamed content and tool-call reconstruction
 - `run_trace.py`: optional JSONL request tracing
 

@@ -25,5 +25,5 @@
   <text class="label" x="536" y="318">AFTER RETRIEVAL</text>
   <text x="536" y="349" font-size="20" font-weight="800">Allowed</text>
   <text class="muted" x="536" y="378">final cites returned OWASP metadata</text>
-  <text class="muted" x="64" y="462">See agent.agent_skill_policy and docs/examples/owasp-trace.json for the backing rule and sample event.</text>
+  <text class="muted" x="64" y="462">See agent.skill_policy and docs/examples/owasp-trace.json for the backing rule and sample event.</text>
 </svg>

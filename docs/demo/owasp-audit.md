@@ -49,7 +49,7 @@ The runtime message instructs the agent to call `search_owasp_reference` with
 the concrete concern found in reviewed evidence, then answer using only returned
 OWASP source, version, reference, title, and URL metadata for citations.
 
-This is a runtime guarantee enforced by `agent.agent_skill_policy`, not a prompt
+This is a runtime guarantee enforced by `agent.skill_policy`, not a prompt
 instruction that depends on model compliance.
 
 ## Sample Final Report

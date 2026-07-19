@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from agent.agent_skill_policy import (
+from agent.skill_policy import (
     remember_owasp_reference_search,
     remember_verified_symbols,
     validate_tool_call_against_skill_policy,

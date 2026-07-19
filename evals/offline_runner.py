@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
-from agent.agent_skill_policy import (
+from agent.skill_policy import (
     reset_skill_state,
     set_skill_state_from_selection,
     validate_final_response_against_skill_policy,
