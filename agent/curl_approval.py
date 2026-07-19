@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import ValidationError
 
-from agent.agent_tool_execution import validate_registered_tool_result
+from agent.registered_tool_execution import validate_registered_tool_result
 from contracts.api import ApiErrorResponse
 from tools.curl_tool import add_domain_to_whitelist
 from tools.tools import TOOLS
