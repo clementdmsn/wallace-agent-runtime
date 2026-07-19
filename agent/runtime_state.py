@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from agent.agent_skill_policy import reset_skill_state
+from agent.skill_policy import reset_skill_state
 from agent.run_trace import RunTrace
 logger = logging.getLogger(__name__)
 

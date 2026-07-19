@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from agent.agent_skill_policy import validate_final_response_against_skill_policy
-from agent.agent_tool_execution import execute_tool_call
+from agent.skill_policy import validate_final_response_against_skill_policy
+from agent.tool_execution import execute_tool_call
 from agent.final_response_policy import handle_skill_policy_blocked_final_response
 from agent import model_lifecycle
 from agent import skill_selection

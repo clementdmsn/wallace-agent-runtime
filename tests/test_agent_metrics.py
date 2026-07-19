@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from agent.agent_metrics import AgentMetrics, estimate_messages_chars
+from agent.metrics import AgentMetrics, estimate_messages_chars
 
 
-def test_agent_metrics_records_request_model_and_tool():
+def test_metrics_records_request_model_and_tool():
     metrics = AgentMetrics()
     metrics.start_request(7, 'model-a', 120)
     call_index = metrics.start_model_call(
@@ -46,7 +46,7 @@ def test_estimate_messages_chars_counts_content_and_tool_calls():
     assert count >= len('systemabcassistant')
 
 
-def test_agent_metrics_snapshot_includes_running_elapsed_time():
+def test_metrics_snapshot_includes_running_elapsed_time():
     metrics = AgentMetrics()
     metrics.start_request(7, 'model-a', 120)
     metrics.start_model_call(7, 0, 'model-a', 240)

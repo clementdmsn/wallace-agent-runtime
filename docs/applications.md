@@ -13,7 +13,7 @@ guidance.
 target set, inspect code evidence, retrieve OWASP references, and block final
 findings until retrieval has happened.
 
-**Relevant components:** `skills/selection.py`, `agent/agent_skill_policy.py`,
+**Relevant components:** `skills/selection.py`, `agent/skill_policy.py`,
 `tools/review_target_tools.py`, `tools/owasp_reference_tools.py`,
 `evals/scenarios/agent_contracts.json`.
 
@@ -30,7 +30,7 @@ function requests through `list_code_symbols` before
 `explain_function_for_model`; block guessed symbols.
 
 **Relevant components:** `tools/code_tools.py`, `skills/guidance.py`,
-`agent/agent_skill_policy.py`.
+`agent/skill_policy.py`.
 
 **Limitations:** language support depends on the implemented parsers and the
 quality of the inspected source.
@@ -45,7 +45,7 @@ arguments, execute tools server-side, append hidden tool messages, and display
 tool events in the UI.
 
 **Relevant components:** `tools/schemas.py`, `tools/tools.py`,
-`agent/agent_tool_execution.py`, `web/app.js`.
+`agent/tool_execution.py`, `web/app.js`.
 
 **Limitations:** shell access is intentionally constrained and should remain
 behind stronger isolation for shared or hosted deployments.

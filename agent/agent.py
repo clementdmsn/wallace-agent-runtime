@@ -6,7 +6,7 @@ import threading
 from typing import Any
 
 from system_prompt.system_prompt import build_system_prompt
-from agent.agent_metrics import AgentMetrics
+from agent.metrics import AgentMetrics
 from agent.run_trace import RunTrace
 from agent.runtime_components import AgentRunner, ApprovalRuntime, GenerationRuntime
 from agent.runtime_state import (

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from agent.agent_skill_policy import (
+from agent.skill_policy import (
     remember_owasp_reference_search,
     remember_verified_symbols,
     reset_skill_state,

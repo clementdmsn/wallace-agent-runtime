@@ -5,7 +5,7 @@ import threading
 
 import pytest
 
-from agent import agent_tool_execution, registered_tool_execution
+from agent import tool_execution, registered_tool_execution
 from contracts.events import PendingApproval
 from tools.tool_registry import Tool
 
@@ -73,7 +73,7 @@ def tool_call(name: str, arguments: str = '{}') -> dict[str, object]:
 def test_execute_tool_call_records_invalid_json_as_tool_error():
     agent = FakeAgent()
 
-    ok = agent_tool_execution.execute_tool_call(agent, tool_call('read_file', '{bad json'), 7)
+    ok = tool_execution.execute_tool_call(agent, tool_call('read_file', '{bad json'), 7)
 
     assert ok is True
     assert agent.tool_events[0]['result']['status'] == 'error'
@@ -94,7 +94,7 @@ def test_execute_tool_call_rejects_non_finite_json_arguments(monkeypatch, consta
         Tool('fake_tool', lambda value: called.append(value) or {'status': 'ok'}),
     )
 
-    ok = agent_tool_execution.execute_tool_call(agent, tool_call('fake_tool', f'{{"value": {constant}}}'), 7)
+    ok = tool_execution.execute_tool_call(agent, tool_call('fake_tool', f'{{"value": {constant}}}'), 7)
 
     assert ok is True
     assert called == []
@@ -107,7 +107,7 @@ def test_execute_tool_call_rejects_non_finite_json_arguments(monkeypatch, consta
 def test_execute_tool_call_records_unknown_tool_error():
     agent = FakeAgent()
 
-    ok = agent_tool_execution.execute_tool_call(agent, tool_call('missing_tool'), 7)
+    ok = tool_execution.execute_tool_call(agent, tool_call('missing_tool'), 7)
 
     assert ok is True
     assert agent.tool_events[0]['result'] == {
@@ -125,7 +125,7 @@ def test_execute_tool_call_runs_registered_tool_and_appends_hidden_message(monke
 
     monkeypatch.setitem(registered_tool_execution.TOOLS, 'fake_read', Tool('fake_read', fake_tool))
 
-    ok = agent_tool_execution.execute_tool_call(
+    ok = tool_execution.execute_tool_call(
         agent,
         tool_call('fake_read', json.dumps({'path': 'notes.txt'})),
         7,
@@ -174,7 +174,7 @@ def test_hidden_tool_message_includes_truncation_metadata(monkeypatch):
 
     monkeypatch.setitem(registered_tool_execution.TOOLS, 'fake_shell', Tool('fake_shell', fake_tool))
 
-    ok = agent_tool_execution.execute_tool_call(agent, tool_call('fake_shell'), 7)
+    ok = tool_execution.execute_tool_call(agent, tool_call('fake_shell'), 7)
 
     hidden = json.loads(agent.messages[0]['content'])
     assert ok is True
@@ -195,7 +195,7 @@ def test_execute_tool_call_stops_run_for_pending_approval(monkeypatch):
 
     monkeypatch.setitem(registered_tool_execution.TOOLS, 'curl_url', Tool('curl_url', fake_curl))
 
-    ok = agent_tool_execution.execute_tool_call(
+    ok = tool_execution.execute_tool_call(
         agent,
         tool_call('curl_url', json.dumps({'url': 'https://docs.python.org/3/'})),
         7,
@@ -225,7 +225,7 @@ def test_execute_tool_call_converts_incomplete_approval_result_to_tool_error(mon
 
     monkeypatch.setitem(registered_tool_execution.TOOLS, 'curl_url', Tool('curl_url', fake_curl))
 
-    ok = agent_tool_execution.execute_tool_call(
+    ok = tool_execution.execute_tool_call(
         agent,
         tool_call('curl_url', json.dumps({'url': 'https://docs.python.org/3/'})),
         7,
@@ -250,7 +250,7 @@ def test_execute_tool_call_does_not_mutate_stale_run(monkeypatch):
         Tool('fake_tool', lambda: called.append(True) or {'status': 'ok'}),
     )
 
-    ok = agent_tool_execution.execute_tool_call(agent, tool_call('fake_tool'), 99)
+    ok = tool_execution.execute_tool_call(agent, tool_call('fake_tool'), 99)
 
     assert ok is False
     assert called == []
@@ -273,7 +273,7 @@ def test_execute_tool_call_records_tool_duration(monkeypatch):
         Tool('fake_tool', lambda: {'status': 'ok'}),
     )
 
-    ok = agent_tool_execution.execute_tool_call(agent, tool_call('fake_tool'), 7)
+    ok = tool_execution.execute_tool_call(agent, tool_call('fake_tool'), 7)
 
     assert ok is True
     assert recorded
@@ -305,7 +305,7 @@ def test_execute_tool_call_returns_create_skill_draft_after_three_validation_fai
     }
 
     for _ in range(3):
-        ok = agent_tool_execution.execute_tool_call(agent, tool_call('create_skill', json.dumps(args)), 7)
+        ok = tool_execution.execute_tool_call(agent, tool_call('create_skill', json.dumps(args)), 7)
 
     assert ok is True
     result = agent.tool_events[-1]['result']
