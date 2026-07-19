@@ -336,7 +336,7 @@ def test_baseline_metrics_reserves_runtime_during_measurement():
 
     assert response.status_code == 200
     assert overlap_attempts == [False]
-    assert runtime.agent.is_busy() is False
+    assert runtime.agent.generation.is_busy() is False
     assert runtime.agent.messages == runtime.agent._initial_messages()
 
 
@@ -436,7 +436,7 @@ def test_runtime_resume_with_tool_result_clears_pending_after_reserving_generati
     hidden = runtime.agent.messages[-1]['content']
     assert '"status": "ok"' in hidden
     assert '"content": "text"' in hidden
-    assert runtime.agent.is_busy() is False
+    assert runtime.agent.generation.is_busy() is False
 
 
 def test_curl_approval_approve_persists_domain_and_resumes(monkeypatch):

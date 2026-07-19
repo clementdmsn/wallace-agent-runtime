@@ -81,14 +81,12 @@ def test_generation_runtime_reserves_and_finishes_current_run():
 
     assert run_id == agent.run_id
     assert agent.generation.is_busy() is True
-    assert agent.is_busy() is True
     assert agent.messages[-1] == {'role': 'user', 'content': 'hello'}
     assert agent.generation.reserve() is None
 
     agent.generation.finish(run_id)
 
     assert agent.generation.is_busy() is False
-    assert agent.is_busy() is False
 
 
 def test_generation_runtime_ignores_stale_finish():
