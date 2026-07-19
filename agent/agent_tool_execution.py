@@ -10,6 +10,11 @@ from agent.agent_skill_policy import (
     remember_verified_symbols,
     validate_tool_call_against_skill_policy,
 )
+from agent.tool_call_parsing import (
+    parse_tool_call,
+    parse_tool_args,
+    ParsedToolCall,
+)
 from agent.runtime_state import is_current_run, notify_stream, trace
 from contracts.events import ToolEvent
 from contracts.tool_results import CurlResult
@@ -18,21 +23,14 @@ from tools.tools import TOOLS
 
 
 @dataclass
-class ParsedToolCall:
-    call_id: str
-    name: str
-    raw_args: str
-
-
-@dataclass
 class ToolExecutionResult:
     kind: str
     args: dict[str, Any]
     result: object
 
-
-def reject_json_constant(value: str) -> None:
-    raise ValueError(f'invalid JSON constant: {value}')
+def record_active_skill_event(agent: Any, event: str) -> None:
+    if agent.active_skill_name:
+        record_skill_event(agent.active_skill_name, event)
 
 
 def result_payload(name: str, result: object, kind: str) -> dict[str, Any]:
@@ -108,31 +106,6 @@ def result_payload(name: str, result: object, kind: str) -> dict[str, Any]:
         if key in result:
             payload[key] = result[key]
     return payload
-
-
-def parse_tool_call(tool_call: dict[str, Any]) -> ParsedToolCall:
-    function = tool_call.get('function') or {}
-    return ParsedToolCall(
-        call_id=str(tool_call.get('id', '')),
-        name=str(function.get('name', '')),
-        raw_args=function.get('arguments', '{}') or '{}',
-    )
-
-
-def parse_tool_args(raw_args: str) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
-    try:
-        args = json.loads(raw_args, parse_constant=reject_json_constant)
-        if not isinstance(args, dict):
-            raise ValueError('call arguments must decode to an object')
-    except Exception as exc:
-        return None, {'status': 'error', 'error': f'invalid call arguments: {exc}'}
-    return args, None
-
-
-def record_active_skill_event(agent: Any, event: str) -> None:
-    if agent.active_skill_name:
-        record_skill_event(agent.active_skill_name, event)
-
 
 def apply_skill_authoring_retry_policy(agent: Any, call_name: str, result: object) -> object:
     if call_name not in {'create_skill', 'finalize_skill_draft', 'repair_skill_draft'} or not isinstance(result, dict):
