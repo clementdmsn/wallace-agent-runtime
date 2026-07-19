@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from agent.agent import Agent
 from agent import curl_approval
+from agent.runtime_state import reset_request_skill_state
 from agent.runtime import AgentRuntime
 from web import web_app
 from web.metrics_routes import measure_baseline
@@ -49,7 +50,7 @@ def reset_web_agent() -> None:
         agent.last_error = ''
         agent.pending_approval = None
         agent.metrics.reset_current()
-        agent._reset_skill_state()
+        reset_request_skill_state(agent)
 
 
 def set_agent_busy(is_busy: bool = True) -> None:

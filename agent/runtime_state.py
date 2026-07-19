@@ -3,8 +3,16 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from agent.agent_skill_policy import reset_skill_state
 from agent.run_trace import RunTrace
 logger = logging.getLogger(__name__)
+
+
+def reset_request_skill_state(agent: Any) -> None:
+    reset_skill_state(agent)
+    agent.active_skill_selection = None
+    agent.request_system_prompt = None
+    agent.skill_creation_failures = 0
 
 
 def append_message_locked(agent: Any, submitted: dict[str, Any]) -> None:
@@ -12,7 +20,7 @@ def append_message_locked(agent: Any, submitted: dict[str, Any]) -> None:
     if submitted.get('role') == 'user':
         agent.tool_events = []
         agent.pending_approval = None
-        agent._reset_skill_state()
+        reset_request_skill_state(agent)
 
 
 def snapshot_messages(agent: Any) -> list[dict[str, Any]]:

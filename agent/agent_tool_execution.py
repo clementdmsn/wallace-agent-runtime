@@ -10,6 +10,7 @@ from agent.agent_skill_policy import (
     remember_verified_symbols,
     validate_tool_call_against_skill_policy,
 )
+from agent.runtime_state import is_current_run, notify_stream, trace
 from contracts.events import ToolEvent
 from contracts.tool_results import CurlResult
 from skills.stats import record_skill_event
@@ -251,7 +252,7 @@ def append_resolved_tool_result(agent: Any, pending: dict[str, Any], result: dic
         agent.messages.append(hidden_tool_message(parsed, execution))
         if agent.last_error == 'Waiting for user approval.':
             agent.last_error = ''
-    agent._notify_stream()
+    notify_stream(agent)
 
 
 def result_status(result: object) -> str:
@@ -263,32 +264,29 @@ def result_status(result: object) -> str:
 def execute_tool_call(agent: Any, tool_call: dict[str, Any], run_id: int) -> bool:
     started = perf_counter()
     parsed = parse_tool_call(tool_call)
-    trace = getattr(agent, 'run_trace', None)
-    trace_payload = trace.payload if trace is not None else lambda value: value
-    trace_record = getattr(agent, '_trace', None)
+    run_trace = getattr(agent, 'run_trace', None)
+    trace_payload = run_trace.payload if run_trace is not None else lambda value: value
 
-    if callable(trace_record):
-        trace_record(
-            'tool_call_started',
-            call_id=parsed.call_id,
-            tool=parsed.name,
-            raw_arguments=trace_payload(parsed.raw_args),
-            tool_call=trace_payload(tool_call),
-        )
+    trace(
+        agent,
+        'tool_call_started',
+        call_id=parsed.call_id,
+        tool=parsed.name,
+        raw_arguments=trace_payload(parsed.raw_args),
+        tool_call=trace_payload(tool_call),
+    )
 
     with agent.lock:
-        if not agent._is_current_run(run_id):
-            if callable(trace_record):
-                trace_record('tool_call_stale', call_id=parsed.call_id, tool=parsed.name)
+        if not is_current_run(agent, run_id):
+            trace(agent, 'tool_call_stale', call_id=parsed.call_id, tool=parsed.name)
             return False
 
     execution = run_tool(agent, parsed.name, parsed.raw_args)
     event = tool_event(parsed, execution)
 
     with agent.lock:
-        if not agent._is_current_run(run_id):
-            if callable(trace_record):
-                trace_record('tool_call_stale', call_id=parsed.call_id, tool=parsed.name)
+        if not is_current_run(agent, run_id):
+            trace(agent, 'tool_call_stale', call_id=parsed.call_id, tool=parsed.name)
             return False
         duration_ms = (perf_counter() - started) * 1000
         status = result_status(execution.result)
@@ -305,31 +303,31 @@ def execute_tool_call(agent: Any, tool_call: dict[str, Any], run_id: int) -> boo
                 if callable(setter):
                     setter(parsed.name, execution.args, execution.result, parsed.call_id)
             agent.last_error = 'Waiting for user approval.'
-            if callable(trace_record):
-                trace_record(
-                    'tool_call_pending_approval',
-                    call_id=parsed.call_id,
-                    tool=parsed.name,
-                    status=status,
-                    duration_ms=round(duration_ms, 2),
-                    args=trace_payload(execution.args),
-                    result=trace_payload(execution.result),
-                )
-            agent._notify_stream()
-            return False
-        hidden_message = hidden_tool_message(parsed, execution)
-        agent.messages.append(hidden_message)
-        if callable(trace_record):
-            trace_record(
-                'tool_call_finished',
+            trace(
+                agent,
+                'tool_call_pending_approval',
                 call_id=parsed.call_id,
                 tool=parsed.name,
                 status=status,
                 duration_ms=round(duration_ms, 2),
                 args=trace_payload(execution.args),
                 result=trace_payload(execution.result),
-                hidden_message=trace_payload(hidden_message),
             )
+            notify_stream(agent)
+            return False
+        hidden_message = hidden_tool_message(parsed, execution)
+        agent.messages.append(hidden_message)
+        trace(
+            agent,
+            'tool_call_finished',
+            call_id=parsed.call_id,
+            tool=parsed.name,
+            status=status,
+            duration_ms=round(duration_ms, 2),
+            args=trace_payload(execution.args),
+            result=trace_payload(execution.result),
+            hidden_message=trace_payload(hidden_message),
+        )
 
-    agent._notify_stream()
+    notify_stream(agent)
     return True
