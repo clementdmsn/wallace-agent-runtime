@@ -50,7 +50,7 @@ class AgentRuntime:
             runtime_metrics = self.agent.metrics.snapshot()
             last_error = self.agent.last_error
             is_generating = self.agent.is_generating
-            pending_approval = self.agent.snapshot_pending_approval()
+            pending_approval = self.agent.approvals.snapshot()
             active_skill_name = self.agent.active_skill_name
             active_skill_policy = dict(self.agent.active_skill_policy or {})
 
@@ -92,7 +92,7 @@ class AgentRuntime:
             if self.worker is not None and self.worker.is_alive():
                 return False
 
-            current_pending = self.agent.snapshot_pending_approval()
+            current_pending = self.agent.approvals.snapshot()
             if current_pending is None:
                 return False
             if approval_id is not None and current_pending.get("approval_id") != approval_id:
@@ -102,7 +102,7 @@ class AgentRuntime:
             if run_id is None:
                 return False
 
-            cleared = self.agent.clear_pending_approval(approval_id)
+            cleared = self.agent.approvals.clear(approval_id)
             if cleared is None:
                 self.agent._finish_generation(run_id)
                 return False
@@ -111,4 +111,3 @@ class AgentRuntime:
             self.worker = threading.Thread(target=self.agent.call_model, args=(run_id,), daemon=True)
             self.worker.start()
             return True
-

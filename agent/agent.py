@@ -21,14 +21,8 @@ from agent.model_lifecycle import (
     normalize_message_for_api,
     prepare_model_call,
 )
-from agent.pending_approval import (
-    build_pending_approval_payload,
-    clear_pending_approval,
-    replace_pending_approval,
-    set_pending_approval,
-    snapshot_pending_approval,
-)
 from agent.run_trace import RunTrace
+from agent.runtime_components import ApprovalRuntime
 from agent.runtime_state import (
     append_message_locked,
     finish_generation,
@@ -89,6 +83,7 @@ class Agent:
         self.run_trace: RunTrace | None = None
         self.pending_approval: dict[str, Any] | None = None
         self.last_fulfilled_skill_name: str | None = None
+        self.approvals = ApprovalRuntime(self)
 
     def _initial_messages(self):
         return [{'role': 'system', 'content': build_system_prompt()}]
@@ -149,7 +144,7 @@ class Agent:
         return snapshot_runtime_metrics(self)
 
     def snapshot_pending_approval(self) -> dict[str, Any] | None:
-        return snapshot_pending_approval(self)
+        return self.approvals.snapshot()
 
     def _build_pending_approval_payload(
         self,
@@ -158,7 +153,7 @@ class Agent:
         result: dict[str, Any],
         call_id: str = '',
     ) -> dict[str, Any]:
-        return build_pending_approval_payload(tool_name, args, result, call_id)
+        return self.approvals.build_payload(tool_name, args, result, call_id)
 
     def set_pending_approval(
         self,
@@ -167,7 +162,7 @@ class Agent:
         result: dict[str, Any],
         call_id: str = '',
     ) -> None:
-        set_pending_approval(self, tool_name, args, result, call_id)
+        self.approvals.set(tool_name, args, result, call_id)
 
     def replace_pending_approval(
         self,
@@ -177,10 +172,10 @@ class Agent:
         result: dict[str, Any],
         call_id: str = '',
     ) -> bool:
-        return replace_pending_approval(self, previous_approval_id, tool_name, args, result, call_id)
+        return self.approvals.replace(previous_approval_id, tool_name, args, result, call_id)
 
     def clear_pending_approval(self, approval_id: str | None = None) -> dict[str, Any] | None:
-        return clear_pending_approval(self, approval_id)
+        return self.approvals.clear(approval_id)
 
     def is_busy(self) -> bool:
         return is_busy(self)
