@@ -30,7 +30,6 @@ def test_approval_runtime_builds_and_snapshots_pending_approval():
     }
     assert payload == expected
     assert agent.approvals.snapshot() == expected
-    assert agent.snapshot_pending_approval() == expected
 
 
 def test_approval_runtime_replace_and_clear_respect_approval_id():
@@ -82,14 +81,12 @@ def test_generation_runtime_reserves_and_finishes_current_run():
 
     assert run_id == agent.run_id
     assert agent.generation.is_busy() is True
-    assert agent.is_busy() is True
     assert agent.messages[-1] == {'role': 'user', 'content': 'hello'}
     assert agent.generation.reserve() is None
 
     agent.generation.finish(run_id)
 
     assert agent.generation.is_busy() is False
-    assert agent.is_busy() is False
 
 
 def test_generation_runtime_ignores_stale_finish():
@@ -110,19 +107,10 @@ def test_runner_component_delegates_to_run_loop(monkeypatch):
     calls = []
 
     monkeypatch.setattr(
-        runtime_components.run_loop,
-        'call_model',
+        runtime_components,
+        'run_loop_call_model',
         lambda received_agent, run_id=None: calls.append((received_agent, run_id)) or 'ok',
     )
 
     assert agent.runner.call_model(7) == 'ok'
     assert calls == [(agent, 7)]
-
-
-def test_runner_component_honors_instance_call_model_override():
-    agent = Agent()
-    calls = []
-    agent.call_model = lambda run_id=None: calls.append(run_id) or 'overridden'
-
-    assert agent.runner.call_model(7) == 'overridden'
-    assert calls == [7]

@@ -95,7 +95,7 @@ def test_followup_review_carries_prior_owasp_skill_context(monkeypatch):
 def test_streamed_tool_call_without_backend_id_gets_stable_fallback_id():
     wallace = agent_module.Agent()
     seed_messages(wallace, 'Read a file')
-    run_id = wallace.reserve_generation()
+    run_id = wallace.generation.reserve()
     assert run_id is not None
 
     class FakeCompletions:
@@ -138,7 +138,7 @@ def test_streamed_tool_call_without_backend_id_gets_stable_fallback_id():
 def test_streamed_tool_call_chunks_are_assembled_by_index():
     wallace = agent_module.Agent()
     seed_messages(wallace, 'Read a file')
-    run_id = wallace.reserve_generation()
+    run_id = wallace.generation.reserve()
     assert run_id is not None
 
     class FakeCompletions:

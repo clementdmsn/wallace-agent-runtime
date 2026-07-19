@@ -69,7 +69,7 @@ def test_resolve_curl_approval_approve_persists_domain_and_resumes(monkeypatch):
     )
     runtime.resume_with_resolved_tool_result = (
         lambda received_pending, tool_result, approval_id:
-        resumed.append((received_pending, tool_result, approval_id)) or runtime.agent.clear_pending_approval(approval_id) or True
+        resumed.append((received_pending, tool_result, approval_id)) or runtime.agent.approvals.clear(approval_id) or True
     )
 
     response = curl_approval.resolve_curl_approval(runtime, 'curl:docs.python.org:123', 'approve')
@@ -169,7 +169,7 @@ def test_resolve_curl_approval_deny_appends_denial_and_resumes():
     resumed = []
     runtime.resume_with_resolved_tool_result = (
         lambda received_pending, tool_result, approval_id:
-        resumed.append((received_pending, tool_result, approval_id)) or runtime.agent.clear_pending_approval(approval_id) or True
+        resumed.append((received_pending, tool_result, approval_id)) or runtime.agent.approvals.clear(approval_id) or True
     )
 
     response = curl_approval.resolve_curl_approval(runtime, 'curl:docs.python.org:123', 'deny')

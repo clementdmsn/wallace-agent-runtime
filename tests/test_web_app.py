@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from agent.agent import Agent
 from agent import curl_approval
+from agent import runtime_components
 from agent.runtime_state import reset_request_skill_state
 from agent.runtime import AgentRuntime
 from web import web_app
@@ -335,7 +336,7 @@ def test_baseline_metrics_reserves_runtime_during_measurement():
 
     assert response.status_code == 200
     assert overlap_attempts == [False]
-    assert runtime.agent.is_busy() is False
+    assert runtime.agent.generation.is_busy() is False
     assert runtime.agent.messages == runtime.agent._initial_messages()
 
 
@@ -399,7 +400,7 @@ def test_create_app_can_use_isolated_runtime(monkeypatch):
     assert web_app.default_runtime.agent.messages == web_app.default_runtime.agent._initial_messages()
 
 
-def test_runtime_resume_with_tool_result_clears_pending_after_reserving_generation():
+def test_runtime_resume_with_tool_result_clears_pending_after_reserving_generation(monkeypatch):
     runtime = AgentRuntime(Agent())
     pending = {
         'tool': 'curl_url',
@@ -417,10 +418,10 @@ def test_runtime_resume_with_tool_result_clears_pending_after_reserving_generati
     }
     runtime.agent.pending_approval = dict(pending)
 
-    def finish_immediately(run_id):
-        runtime.agent.generation.finish(run_id)
+    def finish_immediately(agent, run_id):
+        agent.generation.finish(run_id)
 
-    runtime.agent.call_model = finish_immediately
+    monkeypatch.setattr(runtime_components, 'run_loop_call_model', finish_immediately)
 
     resumed = runtime.resume_with_resolved_tool_result(
         pending,
@@ -435,7 +436,7 @@ def test_runtime_resume_with_tool_result_clears_pending_after_reserving_generati
     hidden = runtime.agent.messages[-1]['content']
     assert '"status": "ok"' in hidden
     assert '"content": "text"' in hidden
-    assert runtime.agent.is_busy() is False
+    assert runtime.agent.generation.is_busy() is False
 
 
 def test_curl_approval_approve_persists_domain_and_resumes(monkeypatch):
@@ -459,7 +460,7 @@ def test_curl_approval_approve_persists_domain_and_resumes(monkeypatch):
     )
     runtime.resume_with_resolved_tool_result = (
         lambda received_pending, tool_result, approval_id:
-        resumed.append((received_pending, tool_result, approval_id)) or runtime.agent.clear_pending_approval(approval_id) or True
+        resumed.append((received_pending, tool_result, approval_id)) or runtime.agent.approvals.clear(approval_id) or True
     )
     client = web_app.create_app(runtime).test_client()
 
@@ -592,7 +593,7 @@ def test_curl_approval_deny_appends_denial_and_resumes():
     resumed = []
     runtime.resume_with_resolved_tool_result = (
         lambda received_pending, tool_result, approval_id:
-        resumed.append((received_pending, tool_result, approval_id)) or runtime.agent.clear_pending_approval(approval_id) or True
+        resumed.append((received_pending, tool_result, approval_id)) or runtime.agent.approvals.clear(approval_id) or True
     )
     client = web_app.create_app(runtime).test_client()
 

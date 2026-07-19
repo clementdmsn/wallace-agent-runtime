@@ -194,7 +194,7 @@ def test_call_model_records_unknown_skill_selection_status(monkeypatch):
 def test_call_model_once_records_api_failure():
     wallace = agent_module.Agent()
     seed_messages(wallace)
-    run_id = wallace.reserve_generation()
+    run_id = wallace.generation.reserve()
     assert run_id is not None
 
     class FailingCompletions:
@@ -214,7 +214,7 @@ def test_prepare_model_call_injects_request_system_prompt():
     wallace = agent_module.Agent()
     seed_messages(wallace)
     wallace.request_system_prompt = 'request prompt'
-    run_id = wallace.reserve_generation()
+    run_id = wallace.generation.reserve()
     assert run_id is not None
 
     prepared = model_lifecycle.prepare_model_call(wallace, run_id)
@@ -239,7 +239,7 @@ def test_prepare_model_call_compacts_duplicate_tool_content():
         {'role': 'tool', 'tool_call_id': 'call-1', 'content': repeated},
         {'role': 'tool', 'tool_call_id': 'call-2', 'content': repeated},
     ]
-    run_id = wallace.reserve_generation()
+    run_id = wallace.generation.reserve()
     assert run_id is not None
 
     prepared = model_lifecycle.prepare_model_call(wallace, run_id)
@@ -275,7 +275,7 @@ def test_prepare_model_call_traces_compaction_metadata(monkeypatch):
         {'role': 'tool', 'tool_call_id': 'call-1', 'content': repeated},
         {'role': 'tool', 'tool_call_id': 'call-2', 'content': repeated},
     ]
-    run_id = wallace.reserve_generation()
+    run_id = wallace.generation.reserve()
     assert run_id is not None
 
     prepared = model_lifecycle.prepare_model_call(wallace, run_id)
@@ -312,7 +312,7 @@ def test_call_model_once_sends_compacted_messages_to_api():
         {'role': 'tool', 'tool_call_id': 'call-1', 'content': repeated},
         {'role': 'tool', 'tool_call_id': 'call-2', 'content': repeated},
     ]
-    run_id = wallace.reserve_generation()
+    run_id = wallace.generation.reserve()
     assert run_id is not None
 
     response = model_lifecycle.call_model_once(wallace, run_id)
@@ -328,7 +328,7 @@ def test_call_model_once_sends_compacted_messages_to_api():
 def test_model_streaming_stops_on_stale_content_delta():
     wallace = agent_module.Agent()
     seed_messages(wallace)
-    run_id = wallace.reserve_generation()
+    run_id = wallace.generation.reserve()
     assert run_id is not None
     assistant_message = {'role': 'assistant', 'content': ''}
     wallace.run_id += 1
@@ -342,7 +342,7 @@ def test_model_streaming_stops_on_stale_content_delta():
 def test_model_streaming_stops_on_stale_tool_delta():
     wallace = agent_module.Agent()
     seed_messages(wallace)
-    run_id = wallace.reserve_generation()
+    run_id = wallace.generation.reserve()
     assert run_id is not None
     assistant_message = {'role': 'assistant', 'content': ''}
     wallace.run_id += 1
@@ -363,7 +363,7 @@ def test_model_streaming_stops_on_stale_tool_delta():
 def test_consume_model_stream_returns_false_when_delta_application_fails(monkeypatch):
     wallace = agent_module.Agent()
     seed_messages(wallace)
-    run_id = wallace.reserve_generation()
+    run_id = wallace.generation.reserve()
     assert run_id is not None
     assistant_message = {'role': 'assistant', 'content': ''}
 
