@@ -104,10 +104,7 @@ class Agent:
 
     def add_message(self, submitted) -> None:
         with self.lock:
-            self._append_message_locked(submitted)
-
-    def _append_message_locked(self, submitted: dict[str, Any]) -> None:
-        append_message_locked(self, submitted)
+            append_message_locked(self, submitted)
 
     def snapshot_messages(self) -> list[dict[str, Any]]:
         return snapshot_messages(self)
@@ -163,12 +160,6 @@ class Agent:
 
     def reserve_generation(self, submitted: dict[str, Any] | None = None) -> int | None:
         return self.generation.reserve(submitted)
-
-    def _start_generation(self) -> int | None:
-        return self.reserve_generation()
-
-    def _finish_generation(self, run_id: int):
-        self.generation.finish(run_id)
 
     def _execute_callable(self, tool_call: dict[str, Any], run_id: int) -> bool:
         return execute_tool_call(self, tool_call, run_id)

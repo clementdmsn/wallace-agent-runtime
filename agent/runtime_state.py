@@ -56,7 +56,7 @@ def reserve_generation(agent: Any, submitted: dict[str, Any] | None = None) -> i
         if agent.is_generating:
             return None
         if submitted is not None:
-            agent._append_message_locked(submitted)
+            append_message_locked(agent, submitted)
         agent.is_generating = True
         agent.last_error = ''
         agent.loop_turn = 0

@@ -9,7 +9,7 @@ from agent import skill_selection
 
 def call_model(agent: Any, run_id: int | None = None) -> str | None:
     if run_id is None:
-        run_id = agent._start_generation()
+        run_id = agent.generation.reserve()
     if run_id is None:
         return None
 
@@ -78,4 +78,4 @@ def call_model(agent: Any, run_id: int | None = None) -> str | None:
             agent._record_skill_event(agent.active_skill_name, 'failure')
         return None
     finally:
-        agent._finish_generation(run_id)
+        agent.generation.finish(run_id)
