@@ -4,8 +4,6 @@ import logging
 from typing import Any
 
 from agent.run_trace import RunTrace
-from agent.skill_selection import latest_user_text
-
 logger = logging.getLogger(__name__)
 
 
@@ -35,6 +33,16 @@ def snapshot_runtime_metrics(agent: Any) -> dict[str, object]:
 def is_busy(agent: Any) -> bool:
     with agent.lock:
         return agent.is_generating
+
+
+def latest_user_text(agent: Any) -> str:
+    with agent.lock:
+        for message in reversed(agent.messages):
+            if message.get('role') == 'user':
+                content = message.get('content')
+                if isinstance(content, str):
+                    return content
+    return ''
 
 
 def is_current_run(agent: Any, run_id: int) -> bool:

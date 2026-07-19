@@ -3,7 +3,9 @@ from __future__ import annotations
 from typing import Any
 
 from contracts.events import SkillPolicyEvent
+from agent.runtime_state import is_current_run, notify_stream, trace
 from agent.skill_selection import append_skill_policy_event
+from skills.skills import record_skill_event
 
 
 def handle_skill_policy_blocked_final_response(
@@ -13,7 +15,7 @@ def handle_skill_policy_blocked_final_response(
     policy_error: dict[str, Any],
 ) -> bool:
     with agent.lock:
-        if not agent._is_current_run(run_id):
+        if not is_current_run(agent, run_id):
             return False
         if agent.messages and agent.messages[-1].get('role') == 'assistant':
             agent.messages.pop()
@@ -35,13 +37,14 @@ def handle_skill_policy_blocked_final_response(
                 required_tool=policy_error.get('required_tool'),
             )
         )
-        agent._trace(
+        trace(
+            agent,
             'skill_policy_blocked_final_response',
             error=policy_error.get('error'),
             required_tool=policy_error.get('required_tool'),
             blocked_content_chars=len(content),
         )
     if agent.active_skill_name:
-        agent._record_skill_event(agent.active_skill_name, 'failure')
-    agent._notify_stream()
+        record_skill_event(agent.active_skill_name, 'failure')
+    notify_stream(agent)
     return True

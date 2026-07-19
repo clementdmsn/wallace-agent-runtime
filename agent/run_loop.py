@@ -5,6 +5,7 @@ from typing import Any
 from agent.agent_skill_policy import validate_final_response_against_skill_policy
 from agent import model_lifecycle
 from agent import skill_selection
+from skills.skills import record_skill_event
 
 
 def call_model(agent: Any, run_id: int | None = None) -> str | None:
@@ -53,7 +54,7 @@ def call_model(agent: Any, run_id: int | None = None) -> str | None:
                     agent.last_error = 'Model returned an empty response.'
                     agent._trace('empty_model_response')
                 if agent.active_skill_name:
-                    agent._record_skill_event(agent.active_skill_name, 'failure')
+                    record_skill_event(agent.active_skill_name, 'failure')
                 return None
 
             if agent.active_skill_name:
@@ -62,7 +63,7 @@ def call_model(agent: Any, run_id: int | None = None) -> str | None:
                     if agent._handle_skill_policy_blocked_final_response(run_id, content, policy_error):
                         continue
                     return None
-                agent._record_skill_event(agent.active_skill_name, 'fulfilled')
+                record_skill_event(agent.active_skill_name, 'fulfilled')
                 agent.last_fulfilled_skill_name = agent.active_skill_name
             else:
                 agent.last_fulfilled_skill_name = None
@@ -75,7 +76,7 @@ def call_model(agent: Any, run_id: int | None = None) -> str | None:
             agent.messages.append({'role': 'assistant', 'content': agent.last_error})
             agent._trace('max_auto_turns_reached', max_auto_turns=agent.MAX_AUTO_TURNS)
         if agent.active_skill_name:
-            agent._record_skill_event(agent.active_skill_name, 'failure')
+            record_skill_event(agent.active_skill_name, 'failure')
         return None
     finally:
         agent.generation.finish(run_id)

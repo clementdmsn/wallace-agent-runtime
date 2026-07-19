@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 from agent import agent as agent_module
 from agent import model_lifecycle
+from agent import skill_selection
 from agent.model_streaming import apply_content_delta, apply_tool_call_delta, consume_model_stream
 
 
@@ -16,7 +17,7 @@ def seed_messages(wallace, user_content: str = 'hello') -> None:
 
 def disable_skill_selection(monkeypatch) -> None:
     monkeypatch.setattr(
-        agent_module,
+        skill_selection,
         'request_skill_for_intent',
         lambda text: {'status': 'ok', 'skill_name': None, 'selection': {}},
     )
@@ -91,7 +92,7 @@ def test_call_model_executes_tool_calls_then_returns_content(monkeypatch):
 
 def test_owasp_review_blocks_final_answer_until_reference_search(monkeypatch):
     monkeypatch.setattr(
-        agent_module,
+        skill_selection,
         'request_skill_for_intent',
         lambda text: {
             'status': 'ok',
@@ -164,7 +165,7 @@ def test_call_model_handles_skill_selection_failure(monkeypatch):
     def raise_selection(text):
         raise RuntimeError('selection failed')
 
-    monkeypatch.setattr(agent_module, 'request_skill_for_intent', raise_selection)
+    monkeypatch.setattr(skill_selection, 'request_skill_for_intent', raise_selection)
     wallace = agent_module.Agent()
     seed_messages(wallace)
     monkeypatch.setattr(model_lifecycle, 'call_model_once', lambda agent, run_id: {'role': 'assistant', 'content': 'ok'})
@@ -176,7 +177,7 @@ def test_call_model_handles_skill_selection_failure(monkeypatch):
 
 def test_call_model_records_unknown_skill_selection_status(monkeypatch):
     monkeypatch.setattr(
-        agent_module,
+        skill_selection,
         'request_skill_for_intent',
         lambda text: {'status': 'pending', 'skill_name': None, 'selection': {}},
     )

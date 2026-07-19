@@ -7,10 +7,7 @@ from typing import Any
 
 from system_prompt.system_prompt import build_system_prompt
 from agent.agent_metrics import AgentMetrics
-from agent.agent_skill_policy import (
-    reset_skill_state,
-    set_skill_state_from_selection,
-)
+from agent.agent_skill_policy import reset_skill_state
 from agent.agent_tool_execution import execute_tool_call
 from agent.final_response_policy import handle_skill_policy_blocked_final_response
 from agent.run_trace import RunTrace
@@ -24,7 +21,7 @@ from agent.runtime_state import (
     trace,
 )
 from config import SETTINGS
-from skills.skills import record_skill_event, request_skill_for_intent
+
 
 class Agent:
     def __init__(self):
@@ -68,15 +65,6 @@ class Agent:
         self.active_skill_selection = None
         self.request_system_prompt = None
         self.skill_creation_failures = 0
-
-    def _set_skill_state_from_selection(self, result: dict[str, Any]) -> None:
-        set_skill_state_from_selection(self, result)
-
-    def _request_skill_for_intent(self, selection_text: str) -> dict[str, Any]:
-        return request_skill_for_intent(selection_text)
-
-    def _record_skill_event(self, skill_name: str, event: str) -> None:
-        record_skill_event(skill_name, event)
 
     def _start_run_trace(self, run_id: int) -> RunTrace:
         return RunTrace.start(run_id)

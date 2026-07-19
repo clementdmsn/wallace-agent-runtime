@@ -4,6 +4,8 @@ from types import SimpleNamespace
 
 from agent import agent as agent_module
 from agent import model_lifecycle
+from agent import run_loop
+from agent import skill_selection
 from agent.model_streaming import fallback_tool_call_id
 
 
@@ -27,8 +29,8 @@ def test_call_model_selects_skill_and_builds_request_prompt(monkeypatch):
     }
     events = []
 
-    monkeypatch.setattr(agent_module, 'request_skill_for_intent', lambda text: selected)
-    monkeypatch.setattr(agent_module, 'record_skill_event', lambda *args: events.append(args))
+    monkeypatch.setattr(skill_selection, 'request_skill_for_intent', lambda text: selected)
+    monkeypatch.setattr(run_loop, 'record_skill_event', lambda *args: events.append(args))
 
     wallace = agent_module.Agent()
     seed_messages(wallace, 'Use the demo skill')
@@ -50,7 +52,7 @@ def test_call_model_selects_skill_and_builds_request_prompt(monkeypatch):
 
 def test_call_model_leaves_prompt_clean_when_no_skill(monkeypatch):
     monkeypatch.setattr(
-        agent_module,
+        skill_selection,
         'request_skill_for_intent',
         lambda text: {
             'status': 'ok',
@@ -79,7 +81,7 @@ def test_followup_review_carries_prior_owasp_skill_context(monkeypatch):
         seen_texts.append(text)
         return {'status': 'ok', 'skill_name': None, 'selection': {}}
 
-    monkeypatch.setattr(agent_module, 'request_skill_for_intent', fake_request_skill)
+    monkeypatch.setattr(skill_selection, 'request_skill_for_intent', fake_request_skill)
 
     wallace = agent_module.Agent()
     seed_messages(wallace, 'now review security_medium.py')
