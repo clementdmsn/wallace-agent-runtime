@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from agent import pending_approval
+from agent import pending_approval, runtime_state
 
 
 class ApprovalRuntime:
@@ -49,3 +49,17 @@ class ApprovalRuntime:
 
     def clear(self, approval_id: str | None = None) -> dict[str, Any] | None:
         return pending_approval.clear_pending_approval(self.agent, approval_id)
+
+
+class GenerationRuntime:
+    def __init__(self, agent: Any):
+        self.agent = agent
+
+    def is_busy(self) -> bool:
+        return runtime_state.is_busy(self.agent)
+
+    def reserve(self, submitted: dict[str, Any] | None = None) -> int | None:
+        return runtime_state.reserve_generation(self.agent, submitted)
+
+    def finish(self, run_id: int) -> None:
+        runtime_state.finish_generation(self.agent, run_id)

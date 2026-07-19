@@ -22,13 +22,10 @@ from agent.model_lifecycle import (
     prepare_model_call,
 )
 from agent.run_trace import RunTrace
-from agent.runtime_components import ApprovalRuntime
+from agent.runtime_components import ApprovalRuntime, GenerationRuntime
 from agent.runtime_state import (
     append_message_locked,
-    finish_generation,
-    is_busy,
     notify_stream,
-    reserve_generation,
     snapshot_messages,
     snapshot_runtime_metrics,
     snapshot_tool_events,
@@ -84,6 +81,7 @@ class Agent:
         self.pending_approval: dict[str, Any] | None = None
         self.last_fulfilled_skill_name: str | None = None
         self.approvals = ApprovalRuntime(self)
+        self.generation = GenerationRuntime(self)
 
     def _initial_messages(self):
         return [{'role': 'system', 'content': build_system_prompt()}]
@@ -178,7 +176,7 @@ class Agent:
         return self.approvals.clear(approval_id)
 
     def is_busy(self) -> bool:
-        return is_busy(self)
+        return self.generation.is_busy()
 
     def _notify_stream(self):
         notify_stream(self)
@@ -187,13 +185,13 @@ class Agent:
         trace(self, event, **fields)
 
     def reserve_generation(self, submitted: dict[str, Any] | None = None) -> int | None:
-        return reserve_generation(self, submitted)
+        return self.generation.reserve(submitted)
 
     def _start_generation(self) -> int | None:
         return self.reserve_generation()
 
     def _finish_generation(self, run_id: int):
-        finish_generation(self, run_id)
+        self.generation.finish(run_id)
 
     def _normalize_message_for_api(self, message: dict[str, Any]) -> dict[str, Any]:
         return normalize_message_for_api(message)

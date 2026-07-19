@@ -67,12 +67,12 @@ class AgentRuntime:
 
     def start_generation(self, submitted: dict[str, Any] | None = None) -> bool:
         with self.state_lock:
-            if self.agent.is_busy():
+            if self.agent.generation.is_busy():
                 return False
             if self.worker is not None and self.worker.is_alive():
                 return False
 
-            run_id = self.agent.reserve_generation(submitted)
+            run_id = self.agent.generation.reserve(submitted)
             if run_id is None:
                 return False
 
@@ -87,7 +87,7 @@ class AgentRuntime:
         approval_id: str | None,
     ) -> bool:
         with self.state_lock:
-            if self.agent.is_busy():
+            if self.agent.generation.is_busy():
                 return False
             if self.worker is not None and self.worker.is_alive():
                 return False
@@ -98,13 +98,13 @@ class AgentRuntime:
             if approval_id is not None and current_pending.get("approval_id") != approval_id:
                 return False
 
-            run_id = self.agent.reserve_generation()
+            run_id = self.agent.generation.reserve()
             if run_id is None:
                 return False
 
             cleared = self.agent.approvals.clear(approval_id)
             if cleared is None:
-                self.agent._finish_generation(run_id)
+                self.agent.generation.finish(run_id)
                 return False
 
             append_resolved_tool_result(self.agent, pending, tool_result)
