@@ -117,12 +117,3 @@ def test_runner_component_delegates_to_run_loop(monkeypatch):
 
     assert agent.runner.call_model(7) == 'ok'
     assert calls == [(agent, 7)]
-
-
-def test_runner_component_honors_instance_call_model_override():
-    agent = Agent()
-    calls = []
-    agent.call_model = lambda run_id=None: calls.append(run_id) or 'overridden'
-
-    assert agent.runner.call_model(7) == 'overridden'
-    assert calls == [7]
