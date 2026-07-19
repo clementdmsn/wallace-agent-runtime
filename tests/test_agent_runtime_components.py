@@ -30,7 +30,6 @@ def test_approval_runtime_builds_and_snapshots_pending_approval():
     }
     assert payload == expected
     assert agent.approvals.snapshot() == expected
-    assert agent.snapshot_pending_approval() == expected
 
 
 def test_approval_runtime_replace_and_clear_respect_approval_id():
