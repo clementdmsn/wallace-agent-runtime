@@ -22,7 +22,7 @@ from agent.model_lifecycle import (
     prepare_model_call,
 )
 from agent.run_trace import RunTrace
-from agent.runtime_components import ApprovalRuntime, GenerationRuntime
+from agent.runtime_components import AgentRunner, ApprovalRuntime, GenerationRuntime
 from agent.runtime_state import (
     append_message_locked,
     notify_stream,
@@ -31,7 +31,6 @@ from agent.runtime_state import (
     snapshot_tool_events,
     trace,
 )
-from agent.run_loop import call_model
 from agent.skill_selection import (
     append_skill_policy_event,
     append_skill_selection_event,
@@ -82,6 +81,7 @@ class Agent:
         self.last_fulfilled_skill_name: str | None = None
         self.approvals = ApprovalRuntime(self)
         self.generation = GenerationRuntime(self)
+        self.runner = AgentRunner(self)
 
     def _initial_messages(self):
         return [{'role': 'system', 'content': build_system_prompt()}]
@@ -258,4 +258,4 @@ class Agent:
         return handle_skill_policy_blocked_final_response(self, run_id, content, policy_error)
 
     def call_model(self, run_id: int | None = None):
-        return call_model(self, run_id)
+        return self.runner.call_model(run_id)

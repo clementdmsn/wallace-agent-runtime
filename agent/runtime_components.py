@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from agent import pending_approval, runtime_state
+from agent import pending_approval, run_loop, runtime_state
 
 
 class ApprovalRuntime:
@@ -63,3 +63,14 @@ class GenerationRuntime:
 
     def finish(self, run_id: int) -> None:
         runtime_state.finish_generation(self.agent, run_id)
+
+
+class AgentRunner:
+    def __init__(self, agent: Any):
+        self.agent = agent
+
+    def call_model(self, run_id: int | None = None) -> str | None:
+        overridden_call_model = self.agent.__dict__.get('call_model')
+        if callable(overridden_call_model):
+            return overridden_call_model(run_id)
+        return run_loop.call_model(self.agent, run_id)

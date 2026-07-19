@@ -76,7 +76,7 @@ class AgentRuntime:
             if run_id is None:
                 return False
 
-            self.worker = threading.Thread(target=self.agent.call_model, args=(run_id,), daemon=True)
+            self.worker = threading.Thread(target=self.agent.runner.call_model, args=(run_id,), daemon=True)
             self.worker.start()
             return True
 
@@ -108,6 +108,6 @@ class AgentRuntime:
                 return False
 
             append_resolved_tool_result(self.agent, pending, tool_result)
-            self.worker = threading.Thread(target=self.agent.call_model, args=(run_id,), daemon=True)
+            self.worker = threading.Thread(target=self.agent.runner.call_model, args=(run_id,), daemon=True)
             self.worker.start()
             return True
