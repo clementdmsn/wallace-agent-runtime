@@ -21,6 +21,21 @@ class FakeTrace:
         self.events.append({'event': event, **fields})
 
 
+class FakeApprovals:
+    def __init__(self, agent):
+        self.agent = agent
+
+    def set(self, tool_name, args, result, call_id='') -> None:
+        self.agent.pending_approval = PendingApproval(
+            tool=tool_name,
+            call_id=call_id,
+            args=dict(args),
+            approval_id=result.get('approval_id'),
+            domain=result.get('domain'),
+            url=result.get('url') or args.get('url'),
+        ).to_payload()
+
+
 class FakeAgent:
     def __init__(self):
         self.lock = threading.RLock()
@@ -39,19 +54,10 @@ class FakeAgent:
         self.notifications = 0
         self.on_stream = self.notify_stream
         self.pending_approval = None
+        self.approvals = FakeApprovals(self)
 
     def notify_stream(self) -> None:
         self.notifications += 1
-
-    def set_pending_approval(self, tool_name, args, result, call_id='') -> None:
-        self.pending_approval = PendingApproval(
-            tool=tool_name,
-            call_id=call_id,
-            args=dict(args),
-            approval_id=result.get('approval_id'),
-            domain=result.get('domain'),
-            url=result.get('url') or args.get('url'),
-        ).to_payload()
 
 
 def tool_call(name: str, arguments: str = '{}') -> dict[str, object]:
