@@ -107,8 +107,8 @@ def test_runner_component_delegates_to_run_loop(monkeypatch):
     calls = []
 
     monkeypatch.setattr(
-        runtime_components.run_loop,
-        'call_model',
+        runtime_components,
+        'run_loop_call_model',
         lambda received_agent, run_id=None: calls.append((received_agent, run_id)) or 'ok',
     )
 

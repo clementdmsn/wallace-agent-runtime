@@ -421,7 +421,7 @@ def test_runtime_resume_with_tool_result_clears_pending_after_reserving_generati
     def finish_immediately(agent, run_id):
         agent.generation.finish(run_id)
 
-    monkeypatch.setattr(runtime_components.run_loop, 'call_model', finish_immediately)
+    monkeypatch.setattr(runtime_components, 'run_loop_call_model', finish_immediately)
 
     resumed = runtime.resume_with_resolved_tool_result(
         pending,
