@@ -5,7 +5,7 @@ import threading
 
 import pytest
 
-from agent import agent_tool_execution
+from agent import agent_tool_execution, registered_tool_execution
 from contracts.events import PendingApproval
 from tools.tool_registry import Tool
 
@@ -83,7 +83,7 @@ def test_execute_tool_call_rejects_non_finite_json_arguments(monkeypatch, consta
     called = []
 
     monkeypatch.setitem(
-        agent_tool_execution.TOOLS,
+        registered_tool_execution.TOOLS,
         'fake_tool',
         Tool('fake_tool', lambda value: called.append(value) or {'status': 'ok'}),
     )
@@ -117,7 +117,7 @@ def test_execute_tool_call_runs_registered_tool_and_appends_hidden_message(monke
     def fake_tool(path: str) -> dict[str, object]:
         return {'status': 'ok', 'path': path, 'content': 'hello'}
 
-    monkeypatch.setitem(agent_tool_execution.TOOLS, 'fake_read', Tool('fake_read', fake_tool))
+    monkeypatch.setitem(registered_tool_execution.TOOLS, 'fake_read', Tool('fake_read', fake_tool))
 
     ok = agent_tool_execution.execute_tool_call(
         agent,
@@ -166,7 +166,7 @@ def test_hidden_tool_message_includes_truncation_metadata(monkeypatch):
             'stderr_truncated': False,
         }
 
-    monkeypatch.setitem(agent_tool_execution.TOOLS, 'fake_shell', Tool('fake_shell', fake_tool))
+    monkeypatch.setitem(registered_tool_execution.TOOLS, 'fake_shell', Tool('fake_shell', fake_tool))
 
     ok = agent_tool_execution.execute_tool_call(agent, tool_call('fake_shell'), 7)
 
@@ -187,7 +187,7 @@ def test_execute_tool_call_stops_run_for_pending_approval(monkeypatch):
             'approval_id': 'curl:docs.python.org:123',
         }
 
-    monkeypatch.setitem(agent_tool_execution.TOOLS, 'curl_url', Tool('curl_url', fake_curl))
+    monkeypatch.setitem(registered_tool_execution.TOOLS, 'curl_url', Tool('curl_url', fake_curl))
 
     ok = agent_tool_execution.execute_tool_call(
         agent,
@@ -217,7 +217,7 @@ def test_execute_tool_call_converts_incomplete_approval_result_to_tool_error(mon
             'url': url,
         }
 
-    monkeypatch.setitem(agent_tool_execution.TOOLS, 'curl_url', Tool('curl_url', fake_curl))
+    monkeypatch.setitem(registered_tool_execution.TOOLS, 'curl_url', Tool('curl_url', fake_curl))
 
     ok = agent_tool_execution.execute_tool_call(
         agent,
@@ -239,7 +239,7 @@ def test_execute_tool_call_does_not_mutate_stale_run(monkeypatch):
     called = []
 
     monkeypatch.setitem(
-        agent_tool_execution.TOOLS,
+        registered_tool_execution.TOOLS,
         'fake_tool',
         Tool('fake_tool', lambda: called.append(True) or {'status': 'ok'}),
     )
@@ -262,7 +262,7 @@ def test_execute_tool_call_records_tool_duration(monkeypatch):
 
     agent.metrics = Metrics()
     monkeypatch.setitem(
-        agent_tool_execution.TOOLS,
+        registered_tool_execution.TOOLS,
         'fake_tool',
         Tool('fake_tool', lambda: {'status': 'ok'}),
     )
@@ -291,7 +291,7 @@ def test_execute_tool_call_returns_create_skill_draft_after_three_validation_fai
             'retry_policy': 'Retry briefly.',
         }
 
-    monkeypatch.setitem(agent_tool_execution.TOOLS, 'create_skill', Tool('create_skill', fake_create_skill))
+    monkeypatch.setitem(registered_tool_execution.TOOLS, 'create_skill', Tool('create_skill', fake_create_skill))
     args = {
         'title': 'demo',
         'markdown': 'procedure',
