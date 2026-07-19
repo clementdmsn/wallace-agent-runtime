@@ -13,7 +13,7 @@ Wallace is a local OpenAI-compatible agent runtime with streamed tool calls, san
 | Policy enforcement | `agent/agent_skill_policy.py` | Allowed tools, forbidden tools, ordered tool calls, verified symbols, and final-answer guards. |
 | Retrieval/indexing | `tools/skill_index_tools.py`, `tools/owasp_reference_tools.py` | FAISS-backed retrieval for skills and local security references. |
 | Human approval | `tools/curl_tool.py`, `web/web_app.py` | Whitelisted URL fetching with approval flow and private-address protection. |
-| Observability | `agent/agent_metrics.py`, `agent/run_trace.py`, `web/metrics_routes.py` | Timing, prompt-size estimates, tool-call metrics, and JSONL traces. |
+| Observability | `agent/metrics.py`, `agent/run_trace.py`, `web/metrics_routes.py` | Timing, prompt-size estimates, tool-call metrics, and JSONL traces. |
 | Agent evals | `evals/offline_runner.py`, `evals/scenarios/agent_contracts.json` | Deterministic behavior contracts for selection, guidance, and policy. |
 | Quality gate | `Makefile`, `.github/workflows/quality.yml` | Compile checks, frontend syntax checks, Ruff, coverage, offline evals, and CI. |
 

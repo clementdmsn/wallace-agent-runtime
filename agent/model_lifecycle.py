@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from agent.agent_metrics import estimate_messages_chars
+from agent.metrics import estimate_messages_chars
 from agent.context_compaction import compact_context_references
 from agent.model_streaming import consume_model_stream
 from agent.runtime_state import is_current_run, notify_stream, trace

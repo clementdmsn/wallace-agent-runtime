@@ -4,7 +4,7 @@ from typing import Any
 
 from flask import jsonify
 
-from agent.agent_metrics import elapsed_ms, estimate_messages_chars, now_ms
+from agent.metrics import elapsed_ms, estimate_messages_chars, now_ms
 from system_prompt.system_prompt import build_system_prompt
 from tools.tools import OPENAI_TOOLS
 
