@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from agent.agent import Agent
+from agent import curl_approval
 from agent.runtime import AgentRuntime
 from web import web_app
 from web.metrics_routes import measure_baseline
@@ -449,9 +450,9 @@ def test_curl_approval_approve_persists_domain_and_resumes(monkeypatch):
     runtime.agent.pending_approval = dict(pending)
     added = []
     resumed = []
-    monkeypatch.setattr(web_app, 'add_domain_to_whitelist', lambda domain: added.append(domain) or {'status': 'ok'})
+    monkeypatch.setattr(curl_approval, 'add_domain_to_whitelist', lambda domain: added.append(domain) or {'status': 'ok'})
     monkeypatch.setitem(
-        web_app.TOOLS,
+        curl_approval.TOOLS,
         'curl_url',
         Tool('curl_url', lambda url: {'status': 'ok', 'url': url, 'final_url': url, 'title': 'Docs', 'content': 'text', 'truncated': False}),
     )
@@ -505,8 +506,8 @@ def test_curl_approval_updates_pending_for_redirect_domain_without_resuming(monk
     runtime.agent.pending_approval = dict(pending)
     added = []
     resumed = []
-    monkeypatch.setattr(web_app, 'add_domain_to_whitelist', lambda domain: added.append(domain) or {'status': 'ok'})
-    monkeypatch.setitem(web_app.TOOLS, 'curl_url', Tool('curl_url', lambda url: next_approval))
+    monkeypatch.setattr(curl_approval, 'add_domain_to_whitelist', lambda domain: added.append(domain) or {'status': 'ok'})
+    monkeypatch.setitem(curl_approval.TOOLS, 'curl_url', Tool('curl_url', lambda url: next_approval))
     runtime.resume_with_resolved_tool_result = (
         lambda received_pending, tool_result, approval_id:
         resumed.append((received_pending, tool_result, approval_id)) or True
@@ -548,9 +549,9 @@ def test_curl_approval_rejects_invalid_redirect_approval_result(monkeypatch, cap
     }
     runtime.agent.pending_approval = dict(pending)
     resumed = []
-    monkeypatch.setattr(web_app, 'add_domain_to_whitelist', lambda domain: {'status': 'ok'})
+    monkeypatch.setattr(curl_approval, 'add_domain_to_whitelist', lambda domain: {'status': 'ok'})
     monkeypatch.setitem(
-        web_app.TOOLS,
+        curl_approval.TOOLS,
         'curl_url',
         Tool('curl_url', lambda url: {'status': 'approval_required', 'url': 'https://cdn.example/docs'}),
     )
@@ -560,7 +561,7 @@ def test_curl_approval_rejects_invalid_redirect_approval_result(monkeypatch, cap
     )
     client = web_app.create_app(runtime).test_client()
 
-    with caplog.at_level('ERROR', logger='web.web_app'):
+    with caplog.at_level('ERROR', logger='agent.curl_approval'):
         response = client.post(
             '/api/curl-approvals',
             json={'approval_id': 'curl:docs.python.org:123', 'action': 'approve'},
@@ -627,7 +628,7 @@ def test_curl_approval_keeps_pending_when_persist_fails(monkeypatch):
         'url': 'https://docs.python.org/3/',
     }
     runtime.agent.pending_approval = dict(pending)
-    monkeypatch.setattr(web_app, 'add_domain_to_whitelist', lambda domain: {'status': 'error', 'error': 'disk full'})
+    monkeypatch.setattr(curl_approval, 'add_domain_to_whitelist', lambda domain: {'status': 'error', 'error': 'disk full'})
     client = web_app.create_app(runtime).test_client()
 
     response = client.post(
@@ -663,9 +664,9 @@ def test_curl_approval_keeps_pending_when_resume_is_busy(monkeypatch):
         'url': 'https://docs.python.org/3/',
     }
     runtime.agent.pending_approval = dict(pending)
-    monkeypatch.setattr(web_app, 'add_domain_to_whitelist', lambda domain: {'status': 'ok'})
+    monkeypatch.setattr(curl_approval, 'add_domain_to_whitelist', lambda domain: {'status': 'ok'})
     monkeypatch.setitem(
-        web_app.TOOLS,
+        curl_approval.TOOLS,
         'curl_url',
         Tool('curl_url', lambda url: {'status': 'ok', 'url': url, 'content': 'text'}),
     )
