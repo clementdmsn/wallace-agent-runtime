@@ -40,7 +40,7 @@ def resolve_curl_approval(runtime: AgentRuntime, approval_id: str, action: str) 
     if action not in {"approve", "deny"}:
         return CurlApprovalResponse({"ok": False, "error": "Action must be approve or deny"}, 400)
 
-    pending = runtime.agent.snapshot_pending_approval()
+    pending = runtime.agent.approvals.snapshot()
     if pending is not None and approval_id and pending.get("approval_id") != approval_id:
         pending = None
     if pending is None:
@@ -86,7 +86,7 @@ def approved_tool_result(
         return CurlApprovalResponse(error.to_payload(), 500)
 
     if isinstance(raw_tool_result, dict) and raw_tool_result.get("status") == "approval_required":
-        replaced = runtime.agent.replace_pending_approval(
+        replaced = runtime.agent.approvals.replace(
             approval_id or None,
             str(pending.get("tool") or "curl_url"),
             dict(pending.get("args") or {}),
@@ -95,7 +95,7 @@ def approved_tool_result(
         )
         if not replaced:
             return CurlApprovalResponse({"ok": False, "error": "No matching pending approval"}, 404)
-        return CurlApprovalResponse({"ok": True, "pending_approval": runtime.agent.snapshot_pending_approval()}, 200)
+        return CurlApprovalResponse({"ok": True, "pending_approval": runtime.agent.approvals.snapshot()}, 200)
 
     return CurlApprovalResponse(model_safe_curl_result(raw_tool_result), 200)
 

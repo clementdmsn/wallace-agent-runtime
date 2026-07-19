@@ -297,9 +297,13 @@ def execute_tool_call(agent: Any, tool_call: dict[str, Any], run_id: int) -> boo
             metrics.record_tool_call(run_id, parsed.name, status, duration_ms)
         agent.tool_events.append(event)
         if isinstance(execution.result, dict) and execution.result.get('status') == 'approval_required':
-            setter = getattr(agent, 'set_pending_approval', None)
-            if callable(setter):
-                setter(parsed.name, execution.args, execution.result, parsed.call_id)
+            approvals = getattr(agent, 'approvals', None)
+            if approvals is not None:
+                approvals.set(parsed.name, execution.args, execution.result, parsed.call_id)
+            else:
+                setter = getattr(agent, 'set_pending_approval', None)
+                if callable(setter):
+                    setter(parsed.name, execution.args, execution.result, parsed.call_id)
             agent.last_error = 'Waiting for user approval.'
             if callable(trace_record):
                 trace_record(
