@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from agent.run_trace import RunTrace
 from agent.skill_selection import latest_user_text
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,10 @@ def is_busy(agent: Any) -> bool:
         return agent.is_generating
 
 
+def is_current_run(agent: Any, run_id: int) -> bool:
+    return run_id == agent.run_id
+
+
 def notify_stream(agent: Any) -> None:
     callback = agent.on_stream
     if callback is not None:
@@ -51,6 +56,10 @@ def trace(agent: Any, event: str, **fields: Any) -> None:
         run_trace.record(event, **fields)
 
 
+def start_run_trace(run_id: int) -> RunTrace:
+    return RunTrace.start(run_id)
+
+
 def reserve_generation(agent: Any, submitted: dict[str, Any] | None = None) -> int | None:
     with agent.lock:
         if agent.is_generating:
@@ -64,26 +73,27 @@ def reserve_generation(agent: Any, submitted: dict[str, Any] | None = None) -> i
         current_run_id = agent.run_id
         system_prompt = str(agent.messages[0].get('content', '')) if agent.messages else ''
         agent.metrics.start_request(current_run_id, agent.model, len(system_prompt))
-        agent.run_trace = agent._start_run_trace(current_run_id)
+        agent.run_trace = start_run_trace(current_run_id)
         latest_user = latest_user_text(agent)
-        agent._trace(
+        trace(
+            agent,
             'run_started',
             model=agent.model,
             system_prompt_chars=len(system_prompt),
             user_message=agent.run_trace.payload(latest_user) if agent.run_trace else latest_user,
         )
-    agent._notify_stream()
+    notify_stream(agent)
     return current_run_id
 
 
 def finish_generation(agent: Any, run_id: int) -> None:
     with agent.lock:
-        if not agent._is_current_run(run_id):
+        if not is_current_run(agent, run_id):
             return
         agent.is_generating = False
         agent.metrics.finish_request(run_id)
         last_error = agent.last_error
         metrics = agent.metrics.snapshot().get('last_request')
-        agent._trace('run_finished', last_error=last_error, metrics=metrics)
+        trace(agent, 'run_finished', last_error=last_error, metrics=metrics)
         agent.run_trace = None
-    agent._notify_stream()
+    notify_stream(agent)

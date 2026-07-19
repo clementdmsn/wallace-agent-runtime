@@ -262,7 +262,11 @@ def test_prepare_model_call_traces_compaction_metadata(monkeypatch):
         for index in range(1, 16)
     )
     events = []
-    monkeypatch.setattr(wallace, '_trace', lambda event, **fields: events.append({'event': event, **fields}))
+    monkeypatch.setattr(
+        model_lifecycle,
+        'trace',
+        lambda agent, event, **fields: events.append({'event': event, **fields}),
+    )
     wallace.messages = [
         {'role': 'system', 'content': 'base prompt'},
         {'role': 'user', 'content': 'hello'},

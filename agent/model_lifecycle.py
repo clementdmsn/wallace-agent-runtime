@@ -5,6 +5,7 @@ from typing import Any
 from agent.agent_metrics import estimate_messages_chars
 from agent.context_compaction import compact_context_references
 from agent.model_streaming import consume_model_stream
+from agent.runtime_state import is_current_run, notify_stream, trace
 from tools.tools import OPENAI_TOOLS
 
 
@@ -27,7 +28,7 @@ def normalize_message_for_api(message: dict[str, Any]) -> dict[str, Any]:
 
 def prepare_model_call(agent: Any, run_id: int) -> tuple[list[dict[str, Any]], int, int | None] | None:
     with agent.lock:
-        if not agent._is_current_run(run_id):
+        if not is_current_run(agent, run_id):
             return None
         request_messages = [normalize_message_for_api(dict(message)) for message in agent.messages]
         if request_messages and agent.request_system_prompt:
@@ -45,7 +46,8 @@ def prepare_model_call(agent: Any, run_id: int) -> tuple[list[dict[str, Any]], i
             compaction_stats=compaction_stats,
         )
         if compaction_stats.get('context_reference_count'):
-            agent._trace(
+            trace(
+                agent,
                 'context_compaction_applied',
                 turn=turn_index,
                 original_prompt_chars=uncompacted_prompt_chars,
@@ -56,7 +58,8 @@ def prepare_model_call(agent: Any, run_id: int) -> tuple[list[dict[str, Any]], i
                 aliases=compaction_stats.get('context_reference_aliases'),
                 transforms=compaction_stats.get('context_reference_transforms'),
             )
-        agent._trace(
+        trace(
+            agent,
             'model_call_started',
             turn=turn_index,
             model=agent.model,
@@ -72,12 +75,12 @@ def prepare_model_call(agent: Any, run_id: int) -> tuple[list[dict[str, Any]], i
 
 def append_assistant_placeholder(agent: Any, run_id: int) -> dict[str, Any] | None:
     with agent.lock:
-        if not agent._is_current_run(run_id):
+        if not is_current_run(agent, run_id):
             return None
         assistant_message: dict[str, Any] = {'role': 'assistant', 'content': ''}
         agent.messages.append(assistant_message)
 
-    agent._notify_stream()
+    notify_stream(agent)
     return assistant_message
 
 
@@ -89,18 +92,19 @@ def finish_model_call(
     assistant_message: dict[str, Any],
 ) -> dict[str, Any] | None:
     with agent.lock:
-        if not agent._is_current_run(run_id):
+        if not is_current_run(agent, run_id):
             return None
         if assistant_message.get('tool_calls') and not assistant_message.get('content'):
             assistant_message['content'] = ''
         agent.metrics.finish_model_call(run_id, model_call_index)
-        agent._trace(
+        trace(
+            agent,
             'model_call_finished',
             turn=turn_index,
             assistant_message=agent.run_trace.payload(assistant_message) if agent.run_trace else assistant_message,
         )
 
-    agent._notify_stream()
+    notify_stream(agent)
     return dict(assistant_message)
 
 
@@ -114,15 +118,15 @@ def fail_model_call(
 ) -> dict[str, Any] | None:
     error_text = f'[Error: {exc}]'
     with agent.lock:
-        if not agent._is_current_run(run_id):
+        if not is_current_run(agent, run_id):
             return None
         assistant_message.clear()
         assistant_message.update({'role': 'assistant', 'content': error_text})
         agent.last_error = str(exc)
         agent.metrics.finish_model_call(run_id, model_call_index)
-        agent._trace('model_call_failed', turn=turn_index, error=str(exc))
+        trace(agent, 'model_call_failed', turn=turn_index, error=str(exc))
 
-    agent._notify_stream()
+    notify_stream(agent)
     return {'role': 'assistant', 'content': error_text}
 
 
