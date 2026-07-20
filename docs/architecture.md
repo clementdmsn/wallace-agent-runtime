@@ -9,27 +9,32 @@ This document describes the active application code in this repository.
 ```text
 Browser
   -> web/web_app.py
-    -> agent/agent.py
-      -> skills/skills.py runtime skill selection
-      -> OpenAI-compatible chat API
-      -> agent/tool_execution.py
-        -> tools/tools.py registry
-          -> tools/basic_tools.py
-          -> tools/code_tools.py
-          -> tools/skill_index_tools.py
-          -> tools/skill_authoring_tools.py
-          -> tools/schemas.py
-      -> agent/skill_policy.py
-        -> skills/ guidance and policy state
+    -> agent/runtime.py AgentRuntime
+      -> agent/agent.py Agent
+        -> agent/runtime_components.py approvals and generation state
+        -> agent/run_loop.py model/tool/final-response orchestration
+          -> agent/skill_selection.py runtime skill selection
+          -> OpenAI-compatible chat API
+          -> agent/tool_execution.py
+            -> tools/tools.py registry
+              -> tools/basic_tools.py
+              -> tools/code_tools.py
+              -> tools/skill_index_tools.py
+              -> tools/skill_authoring_tools.py
+              -> tools/schemas.py
+          -> agent/skill_policy.py
+            -> skills/guidance.py guidance and policy state
 ```
 
 ## Entry Points
 
 - `main.py`: canonical local entry point.
-- `web/web_app.py`: Flask app, routes, static file serving, and one global `Agent`.
+- `web/web_app.py`: Flask app, routes, static file serving, and one default `AgentRuntime`.
 - `make run`: preferred local run command.
 
-The app currently uses one in-memory `Agent`. Restarting `python main.py` or `make run` creates a fresh conversation state.
+The app currently uses one in-memory `AgentRuntime`, which owns one in-memory
+`Agent`. Restarting `python main.py` or `make run` creates a fresh conversation
+state.
 
 ## Web Layer
 
@@ -43,29 +48,71 @@ Files:
 Responsibilities:
 
 - serve the browser UI
-- expose `/api/state`, `/api/messages`, `/api/reset`, and `/api/health`
-- start the model loop in a worker thread
+- expose `/api/state`, `/api/messages`, `/api/curl/approval`,
+  `/api/metrics/baseline`, `/api/reset`, and `/api/health`
+- pass runtime operations through `AgentRuntime`
 - render chat messages and compact runtime/tool events
 
 There is no persistent multi-session backend yet. The sidebar represents the current in-memory conversation.
+
+Route/runtime flow:
+
+- `/api/state` calls `AgentRuntime.snapshot_state()`.
+- `/api/messages` calls `AgentRuntime.start_generation(...)`.
+- `/api/curl/approval` calls `resolve_curl_approval(runtime, ...)`.
+- `/api/metrics/baseline` reserves and releases generation state through the
+  runtime-owned agent.
+- `/api/reset` calls `Agent.reset()`.
 
 ## Agent Layer
 
 Files:
 
 - `agent/agent.py`
+- `agent/runtime.py`
+- `agent/runtime_components.py`
+- `agent/runtime_state.py`
+- `agent/run_loop.py`
+- `agent/model_lifecycle.py`
+- `agent/final_response_policy.py`
 - `agent/tool_execution.py`
 - `agent/skill_policy.py`
+- `agent/skill_selection.py`
 - `agent/model_streaming.py`
 - `agent/run_trace.py`
 
 Responsibilities:
 
-- `agent.py`: conversation state, runtime skill selection, per-request system prompt assembly, and run lifecycle
-- `tool_execution.py`: decode model tool calls, execute registered tools, append hidden tool messages, emit UI events
-- `skill_policy.py`: active skill state, policy validation, verified symbol tracking
-- `model_streaming.py`: streamed content and tool-call reconstruction
+- `agent.py`: initialization, shared runtime state, reset, and the public
+  `call_model` orchestration entry point
+- `runtime.py`: web-facing runtime operations, state snapshots, worker-thread
+  generation start, and curl-approval resume
+- `runtime_components.py`: focused component interfaces for pending approvals
+  and generation state
+- `runtime_state.py`: shared state helpers for messages, notifications, traces,
+  busy state, generation reserve, and generation finish
+- `run_loop.py`: high-level model/tool/final-answer loop
+- `model_lifecycle.py` and `model_streaming.py`: model-call setup, streamed
+  response reconstruction, assistant placeholders, and model-call completion
+- `tool_execution.py`: tool-call parsing, registered tool execution, hidden
+  tool messages, result formatting, and runtime events
+- `skill_selection.py` and `skill_policy.py`: request skill selection, active
+  skill state, guidance, and policy validation
+- `final_response_policy.py`: corrective handling when final answers are
+  blocked by active skill policy
 - `run_trace.py`: optional JSONL request tracing
+
+Current component/API boundaries:
+
+- `agent.approvals.snapshot()`, `build_payload(...)`, `set(...)`,
+  `replace(...)`, and `clear(...)` own pending approval state.
+- `agent.generation.is_busy()`, `reserve(...)`, and `finish(...)` own
+  generation busy state and run reservation.
+- `AgentRuntime.start_generation(...)` is the public web-facing path for user
+  message submission and worker startup.
+- `AgentRuntime.resume_with_resolved_tool_result(...)` is the public runtime
+  path for appending approved or denied curl results and resuming generation.
+- `Agent.call_model(...)` delegates into `agent/run_loop.py`.
 
 Important runtime state:
 
@@ -219,8 +266,8 @@ Responsibilities:
 Contracts live in `contracts/` and define payload shapes for stable runtime
 boundaries such as tool results, runtime events, pending approvals, skill
 selection results, offline eval scenarios, run traces, and web API responses.
-Producers validate at the boundary and then serialize to dictionaries only
-where legacy consumers or JSON responses still require that shape.
+Producers validate at the boundary and serialize to dictionaries where JSON
+responses require that shape.
 
 The API contract uses discriminated runtime event shapes, response
 discriminators, and explicit visible-message roles so `/api/state` cannot

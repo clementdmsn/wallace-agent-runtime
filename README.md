@@ -100,8 +100,9 @@ must retrieve OWASP references before producing final findings.
 ![Wallace high-level runtime architecture](docs/assets/wallace_high_level_diagram.png)
 
 - `web/` serves the Flask app and browser UI.
-- `agent/` owns the model loop, streaming, tool execution, metrics, traces, and
-  active skill policy.
+- `agent/` owns `AgentRuntime`, shared agent state, generation control, the
+  model loop, streaming, tool execution, metrics, traces, and active skill
+  policy.
 - `tools/` contains registered tool implementations and OpenAI tool schemas.
 - `skills/` loads, selects, scores, and turns active skills into execution
   guidance.
