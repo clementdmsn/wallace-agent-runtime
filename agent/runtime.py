@@ -24,19 +24,6 @@ def visible_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return visible
 
 
-def serialize_tool_events(tool_events: list[Any]) -> list[Any]:
-    serialized: list[Any] = []
-    for event in tool_events:
-        if isinstance(event, (dict, list, str, int, float, bool)) or event is None:
-            serialized.append(event)
-        else:
-            try:
-                serialized.append(event.__dict__)
-            except AttributeError:
-                serialized.append(str(event))
-    return serialized
-
-
 class AgentRuntime:
     def __init__(self, agent: Agent | None = None):
         self.agent = agent or Agent()
@@ -56,7 +43,7 @@ class AgentRuntime:
 
         return RuntimeStateResponse(
             messages=visible_messages(messages),
-            tool_events=serialize_tool_events(tool_events),
+            tool_events=tool_events,
             runtime_metrics=runtime_metrics,
             active_skill_name=active_skill_name,
             active_skill_policy=active_skill_policy,
