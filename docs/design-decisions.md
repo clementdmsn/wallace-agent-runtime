@@ -27,6 +27,21 @@ guidance and activates policy state for the current request.
 This keeps workflows such as OWASP review, code explanation, and skill
 authoring explicit instead of relying only on broad system-prompt text.
 
+## Runtime Boundary Shape
+
+The web app talks to `AgentRuntime` rather than directly coordinating raw
+`Agent` state. `AgentRuntime` owns state snapshots, user-message generation
+startup, curl-approval resume, and worker-thread coordination.
+
+`Agent` remains the composition object for shared state and core orchestration.
+Focused runtime components own narrower responsibilities:
+
+- `agent.approvals` owns pending approval snapshot, build, set, replace, and
+  clear operations.
+- `agent.generation` owns busy-state checks, run reservation, and generation
+  finish.
+- `agent/run_loop.py` owns the actual model/tool/final-response loop.
+
 ## External Policy Enforcement
 
 Wallace enforces critical workflow rules outside the model:
@@ -85,6 +100,8 @@ answer.
 
 ## Improvement Paths
 
+- deterministic one-command reviewer demo that replaces only model and
+  embedding boundaries;
 - persistent sessions and trace storage;
 - authenticated multi-user mode;
 - stronger per-run isolation;
