@@ -5,6 +5,12 @@ into a more complete operational system.
 
 ## Near Term
 
+- Introduce an injectable model transport so deterministic demos can exercise
+  the real run loop without an external model server.
+- Introduce injectable embedding/retrieval dependencies so deterministic demos
+  can exercise real FAISS paths without an external embedding server.
+- Add a one-command deterministic reviewer demo after the model and embedding
+  boundaries are explicit.
 - Improve the observability sidebar with clearer timelines, selected skill
   state, policy status, tool latency, and eval status.
 - Add more deterministic offline eval scenarios for blocked tools, premature
