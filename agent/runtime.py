@@ -75,7 +75,6 @@ class AgentRuntime:
             run_id = self.agent.generation.reserve(submitted)
             if run_id is None:
                 return False
-
             self.worker = threading.Thread(target=self.agent.runner.call_model, args=(run_id,), daemon=True)
             self.worker.start()
             return True
