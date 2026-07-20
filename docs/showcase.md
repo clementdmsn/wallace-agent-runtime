@@ -6,13 +6,13 @@ Wallace is a local OpenAI-compatible agent runtime with streamed tool calls, san
 
 | Capability | Where to look | Why it matters |
 |---|---|---|
-| Agent run loop | `agent/agent.py` | Multi-turn agent orchestration with streamed model calls and tool execution. |
+| Agent run loop | `agent/runtime.py`, `agent/run_loop.py` | Worker startup and multi-turn orchestration with streamed model calls and tool execution. |
 | Tool calling | `agent/tool_execution.py`, `tools/schemas.py` | OpenAI function-call schemas, hidden tool messages, runtime events, and error handling. |
 | Sandboxed execution | `sandbox.py`, `tools/basic_tools.py` | Path validation, shell command allowlisting, and explicit file mutation tools. |
 | Skill routing | `skills/selection.py`, `skills/guidance.py` | Runtime-selected procedures with scoring, syntax validation, and task-specific guidance. |
 | Policy enforcement | `agent/skill_policy.py` | Allowed tools, forbidden tools, ordered tool calls, verified symbols, and final-answer guards. |
 | Retrieval/indexing | `tools/skill_index_tools.py`, `tools/owasp_reference_tools.py` | FAISS-backed retrieval for skills and local security references. |
-| Human approval | `tools/curl_tool.py`, `web/web_app.py` | Whitelisted URL fetching with approval flow and private-address protection. |
+| Human approval | `agent/curl_approval.py`, `agent/runtime.py`, `tools/curl_tool.py` | Whitelisted URL fetching with approval flow and private-address protection. |
 | Observability | `agent/metrics.py`, `agent/run_trace.py`, `web/metrics_routes.py` | Timing, prompt-size estimates, tool-call metrics, and JSONL traces. |
 | Agent evals | `evals/offline_runner.py`, `evals/scenarios/agent_contracts.json` | Deterministic behavior contracts for selection, guidance, and policy. |
 | Quality gate | `Makefile`, `.github/workflows/quality.yml` | Compile checks, frontend syntax checks, Ruff, coverage, offline evals, and CI. |
