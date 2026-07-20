@@ -24,19 +24,6 @@ def visible_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return visible
 
 
-def serialize_tool_events(tool_events: list[Any]) -> list[Any]:
-    serialized: list[Any] = []
-    for event in tool_events:
-        if isinstance(event, (dict, list, str, int, float, bool)) or event is None:
-            serialized.append(event)
-        else:
-            try:
-                serialized.append(event.__dict__)
-            except AttributeError:
-                serialized.append(str(event))
-    return serialized
-
-
 class AgentRuntime:
     def __init__(self, agent: Agent | None = None):
         self.agent = agent or Agent()
@@ -56,7 +43,7 @@ class AgentRuntime:
 
         return RuntimeStateResponse(
             messages=visible_messages(messages),
-            tool_events=serialize_tool_events(tool_events),
+            tool_events=tool_events,
             runtime_metrics=runtime_metrics,
             active_skill_name=active_skill_name,
             active_skill_policy=active_skill_policy,
@@ -75,7 +62,7 @@ class AgentRuntime:
             run_id = self.agent.generation.reserve(submitted)
             if run_id is None:
                 return False
-            self.worker = threading.Thread(target=self.agent.runner.call_model, args=(run_id,), daemon=True)
+            self.worker = threading.Thread(target=self.agent.call_model, args=(run_id,), daemon=True)
             self.worker.start()
             return True
 
@@ -107,6 +94,6 @@ class AgentRuntime:
                 return False
 
             append_resolved_tool_result(self.agent, pending, tool_result)
-            self.worker = threading.Thread(target=self.agent.runner.call_model, args=(run_id,), daemon=True)
+            self.worker = threading.Thread(target=self.agent.call_model, args=(run_id,), daemon=True)
             self.worker.start()
             return True

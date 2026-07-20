@@ -9,7 +9,6 @@ from agent.pending_approval import (
     set_pending_approval,
     snapshot_pending_approval,
 )
-from agent.run_loop import call_model as run_loop_call_model
 from agent.runtime_state import finish_generation, is_busy, reserve_generation
 
 if TYPE_CHECKING:
@@ -75,10 +74,3 @@ class GenerationRuntime:
     def finish(self, run_id: int) -> None:
         finish_generation(self.agent, run_id)
 
-
-class AgentRunner:
-    def __init__(self, agent: Agent):
-        self.agent = agent
-
-    def call_model(self, run_id: int | None = None) -> str | None:
-        return run_loop_call_model(self.agent, run_id)

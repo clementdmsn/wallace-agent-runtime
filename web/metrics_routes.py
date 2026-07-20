@@ -4,6 +4,8 @@ from typing import Any
 
 from flask import jsonify
 
+from agent.runtime import AgentRuntime
+from agent.runtime_state import notify_stream
 from agent.metrics import elapsed_ms, estimate_messages_chars, now_ms
 from system_prompt.system_prompt import build_system_prompt
 from tools.tools import OPENAI_TOOLS
@@ -51,39 +53,30 @@ def measure_baseline(agent: Any) -> dict[str, Any]:
     return result
 
 
-def _runtime_agent(runtime_or_agent: Any) -> Any:
-    return getattr(runtime_or_agent, 'agent', runtime_or_agent)
-
-
-def _reserve_baseline(runtime_or_agent: Any) -> tuple[Any, bool]:
-    agent = _runtime_agent(runtime_or_agent)
-    state_lock = getattr(runtime_or_agent, 'state_lock', agent.lock)
-    with state_lock:
-        if agent.is_busy():
-            return agent, False
+def _reserve_baseline(runtime: AgentRuntime) -> bool:
+    with runtime.state_lock:
+        agent = runtime.agent
+        if agent.generation.is_busy():
+            return False
         with agent.lock:
             agent.is_generating = True
-    notify = getattr(agent, '_notify_stream', None)
-    if callable(notify):
-        notify()
-    return agent, True
+    notify_stream(agent)
+    return True
 
 
 def _finish_baseline(agent: Any) -> None:
     with agent.lock:
         agent.is_generating = False
-    notify = getattr(agent, '_notify_stream', None)
-    if callable(notify):
-        notify()
+    notify_stream(agent)
 
 
-def register_metrics_routes(app: Any, runtime_or_agent: Any) -> None:
+def register_metrics_routes(app: Any, runtime: AgentRuntime) -> None:
     @app.post('/api/metrics/baseline')
     def baseline_metrics() -> Any:
-        agent, reserved = _reserve_baseline(runtime_or_agent)
-        if not reserved:
+        if not _reserve_baseline(runtime):
             return jsonify({'status': 'error', 'error': 'Generation already in progress'}), 409
 
+        agent = runtime.agent
         try:
             return jsonify(measure_baseline(agent))
         except Exception as exc:

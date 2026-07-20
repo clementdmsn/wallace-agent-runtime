@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from agent.agent import Agent
 from agent import curl_approval
-from agent import runtime_components
 from agent.runtime_state import reset_request_skill_state
 from agent.runtime import AgentRuntime
 from web import web_app
@@ -240,20 +239,17 @@ def test_post_message_rejects_while_generation_is_active():
 def test_post_message_adds_user_message_and_starts_generation(monkeypatch):
     runtime = AgentRuntime(Agent())
     client = web_app.create_app(runtime).test_client()
-    started = []
 
-    def fake_start_generation(submitted) -> bool:
-        runtime.agent.add_message(submitted)
-        started.append(submitted)
-        return True
+    def finish_immediately(run_id):
+        runtime.agent.generation.finish(run_id)
 
-    monkeypatch.setattr(runtime, 'start_generation', fake_start_generation)
+    monkeypatch.setattr(runtime.agent, 'call_model', finish_immediately)
 
     response = client.post('/api/messages', json={'content': ' hello '})
+    runtime.worker.join(timeout=1)
 
     assert response.status_code == 200
     assert response.get_json() == {'ok': True}
-    assert started == [{'role': 'user', 'content': 'hello'}]
     assert runtime.agent.messages[-1] == {'role': 'user', 'content': 'hello'}
 
 
@@ -418,10 +414,10 @@ def test_runtime_resume_with_tool_result_clears_pending_after_reserving_generati
     }
     runtime.agent.pending_approval = dict(pending)
 
-    def finish_immediately(agent, run_id):
-        agent.generation.finish(run_id)
+    def finish_immediately(run_id):
+        runtime.agent.generation.finish(run_id)
 
-    monkeypatch.setattr(runtime_components, 'run_loop_call_model', finish_immediately)
+    monkeypatch.setattr(runtime.agent, 'call_model', finish_immediately)
 
     resumed = runtime.resume_with_resolved_tool_result(
         pending,

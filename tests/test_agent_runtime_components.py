@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from agent.agent import Agent
-from agent import runtime_components
 
 
 def test_approval_runtime_builds_and_snapshots_pending_approval():
@@ -101,16 +100,3 @@ def test_generation_runtime_ignores_stale_finish():
     agent.generation.finish(run_id)
     assert agent.generation.is_busy() is False
 
-
-def test_runner_component_delegates_to_run_loop(monkeypatch):
-    agent = Agent()
-    calls = []
-
-    monkeypatch.setattr(
-        runtime_components,
-        'run_loop_call_model',
-        lambda received_agent, run_id=None: calls.append((received_agent, run_id)) or 'ok',
-    )
-
-    assert agent.runner.call_model(7) == 'ok'
-    assert calls == [(agent, 7)]

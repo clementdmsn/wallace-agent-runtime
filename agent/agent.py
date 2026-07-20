@@ -8,15 +8,12 @@ from typing import Any
 from system_prompt.system_prompt import build_system_prompt
 from agent.metrics import AgentMetrics
 from agent.run_trace import RunTrace
-from agent.runtime_components import AgentRunner, ApprovalRuntime, GenerationRuntime
+from agent.runtime_components import ApprovalRuntime, GenerationRuntime
 from agent.runtime_state import (
-    append_message_locked,
     notify_stream,
     reset_request_skill_state,
-    snapshot_messages,
-    snapshot_runtime_metrics,
-    snapshot_tool_events,
 )
+from agent.run_loop import call_model as run_loop_call_model
 from config import SETTINGS
 
 
@@ -52,7 +49,6 @@ class Agent:
         self.last_fulfilled_skill_name: str | None = None
         self.approvals = ApprovalRuntime(self)
         self.generation = GenerationRuntime(self)
-        self.runner = AgentRunner(self)
 
     def _initial_messages(self):
         return [{'role': 'system', 'content': build_system_prompt()}]
@@ -75,58 +71,5 @@ class Agent:
         notify_stream(self)
         return True
 
-    def add_message(self, submitted) -> None:
-        with self.lock:
-            append_message_locked(self, submitted)
-
-    def snapshot_messages(self) -> list[dict[str, Any]]:
-        return snapshot_messages(self)
-
-    def snapshot_tool_events(self) -> list[dict[str, Any]]:
-        return snapshot_tool_events(self)
-
-    def snapshot_runtime_metrics(self) -> dict[str, object]:
-        return snapshot_runtime_metrics(self)
-
-    def snapshot_pending_approval(self) -> dict[str, Any] | None:
-        return self.approvals.snapshot()
-
-    def _build_pending_approval_payload(
-        self,
-        tool_name: str,
-        args: dict[str, Any],
-        result: dict[str, Any],
-        call_id: str = '',
-    ) -> dict[str, Any]:
-        return self.approvals.build_payload(tool_name, args, result, call_id)
-
-    def set_pending_approval(
-        self,
-        tool_name: str,
-        args: dict[str, Any],
-        result: dict[str, Any],
-        call_id: str = '',
-    ) -> None:
-        self.approvals.set(tool_name, args, result, call_id)
-
-    def replace_pending_approval(
-        self,
-        previous_approval_id: str | None,
-        tool_name: str,
-        args: dict[str, Any],
-        result: dict[str, Any],
-        call_id: str = '',
-    ) -> bool:
-        return self.approvals.replace(previous_approval_id, tool_name, args, result, call_id)
-
-    def clear_pending_approval(self, approval_id: str | None = None) -> dict[str, Any] | None:
-        return self.approvals.clear(approval_id)
-
-    def is_busy(self) -> bool:
-        return self.generation.is_busy()
-
-    def reserve_generation(self, submitted: dict[str, Any] | None = None) -> int | None:
-        return self.generation.reserve(submitted)
-
     def call_model(self, run_id: int | None = None):
-        return self.runner.call_model(run_id)
+        return run_loop_call_model(self, run_id)
