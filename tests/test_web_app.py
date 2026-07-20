@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from agent.agent import Agent
 from agent import curl_approval
-from agent import runtime_components
 from agent.runtime_state import reset_request_skill_state
 from agent.runtime import AgentRuntime
 from web import web_app
@@ -418,10 +417,10 @@ def test_runtime_resume_with_tool_result_clears_pending_after_reserving_generati
     }
     runtime.agent.pending_approval = dict(pending)
 
-    def finish_immediately(agent, run_id):
-        agent.generation.finish(run_id)
+    def finish_immediately(run_id):
+        runtime.agent.generation.finish(run_id)
 
-    monkeypatch.setattr(runtime_components, 'run_loop_call_model', finish_immediately)
+    monkeypatch.setattr(runtime.agent, 'call_model', finish_immediately)
 
     resumed = runtime.resume_with_resolved_tool_result(
         pending,

@@ -8,7 +8,7 @@ from typing import Any
 from system_prompt.system_prompt import build_system_prompt
 from agent.metrics import AgentMetrics
 from agent.run_trace import RunTrace
-from agent.runtime_components import AgentRunner, ApprovalRuntime, GenerationRuntime
+from agent.runtime_components import ApprovalRuntime, GenerationRuntime
 from agent.runtime_state import (
     append_message_locked,
     notify_stream,
@@ -17,6 +17,7 @@ from agent.runtime_state import (
     snapshot_runtime_metrics,
     snapshot_tool_events,
 )
+from agent.run_loop import call_model as run_loop_call_model
 from config import SETTINGS
 
 
@@ -52,7 +53,6 @@ class Agent:
         self.last_fulfilled_skill_name: str | None = None
         self.approvals = ApprovalRuntime(self)
         self.generation = GenerationRuntime(self)
-        self.runner = AgentRunner(self)
 
     def _initial_messages(self):
         return [{'role': 'system', 'content': build_system_prompt()}]
@@ -129,4 +129,4 @@ class Agent:
         return self.generation.reserve(submitted)
 
     def call_model(self, run_id: int | None = None):
-        return self.runner.call_model(run_id)
+        return run_loop_call_model(self, run_id)
