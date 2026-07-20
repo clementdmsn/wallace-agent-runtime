@@ -76,6 +76,80 @@ def test_snapshot_state_includes_skill_state_and_pending_approval():
     }
 
 
+def test_start_generation_reserves_message_and_starts_worker(monkeypatch):
+    runtime = AgentRuntime(Agent())
+    calls = []
+
+    def finish_immediately(run_id):
+        calls.append(run_id)
+        runtime.agent.generation.finish(run_id)
+
+    monkeypatch.setattr(runtime.agent, 'call_model', finish_immediately)
+
+    started = runtime.start_generation({'role': 'user', 'content': 'hello'})
+    runtime.worker.join(timeout=1)
+
+    assert started is True
+    assert calls == [runtime.agent.run_id]
+    assert runtime.agent.messages[-1] == {'role': 'user', 'content': 'hello'}
+    assert runtime.agent.generation.is_busy() is False
+
+
+def test_start_generation_rejects_concurrent_generation(monkeypatch):
+    runtime = AgentRuntime(Agent())
+    calls = []
+
+    monkeypatch.setattr(runtime.agent, 'call_model', lambda run_id: calls.append(run_id))
+
+    assert runtime.start_generation({'role': 'user', 'content': 'first'}) is True
+    runtime.worker.join(timeout=1)
+
+    assert runtime.start_generation({'role': 'user', 'content': 'second'}) is False
+    assert calls == [runtime.agent.run_id]
+    assert runtime.agent.messages[-1] == {'role': 'user', 'content': 'first'}
+
+    runtime.agent.generation.finish(runtime.agent.run_id)
+
+
+def test_resume_with_resolved_tool_result_clears_pending_and_starts_worker(monkeypatch):
+    runtime = AgentRuntime(Agent())
+    pending = {
+        'tool': 'curl_url',
+        'call_id': 'call-1',
+        'args': {'url': 'https://docs.python.org/3/'},
+        'approval_id': 'curl:docs.python.org:123',
+        'domain': 'docs.python.org',
+        'url': 'https://docs.python.org/3/',
+    }
+    tool_result = {
+        'status': 'ok',
+        'url': 'https://docs.python.org/3/',
+        'final_url': 'https://docs.python.org/3/',
+        'content': 'text',
+    }
+    calls = []
+    runtime.agent.pending_approval = dict(pending)
+
+    def finish_immediately(run_id):
+        calls.append(run_id)
+        runtime.agent.generation.finish(run_id)
+
+    monkeypatch.setattr(runtime.agent, 'call_model', finish_immediately)
+
+    resumed = runtime.resume_with_resolved_tool_result(
+        pending,
+        tool_result,
+        'curl:docs.python.org:123',
+    )
+    runtime.worker.join(timeout=1)
+
+    assert resumed is True
+    assert calls == [runtime.agent.run_id]
+    assert runtime.agent.pending_approval is None
+    assert runtime.agent.messages[-1]['role'] == 'tool'
+    assert runtime.agent.generation.is_busy() is False
+
+
 @pytest.mark.parametrize(
     'tool_events,pending_approval',
     [
