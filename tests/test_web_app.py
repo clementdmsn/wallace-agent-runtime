@@ -239,20 +239,17 @@ def test_post_message_rejects_while_generation_is_active():
 def test_post_message_adds_user_message_and_starts_generation(monkeypatch):
     runtime = AgentRuntime(Agent())
     client = web_app.create_app(runtime).test_client()
-    started = []
 
-    def fake_start_generation(submitted) -> bool:
-        runtime.agent.add_message(submitted)
-        started.append(submitted)
-        return True
+    def finish_immediately(run_id):
+        runtime.agent.generation.finish(run_id)
 
-    monkeypatch.setattr(runtime, 'start_generation', fake_start_generation)
+    monkeypatch.setattr(runtime.agent, 'call_model', finish_immediately)
 
     response = client.post('/api/messages', json={'content': ' hello '})
+    runtime.worker.join(timeout=1)
 
     assert response.status_code == 200
     assert response.get_json() == {'ok': True}
-    assert started == [{'role': 'user', 'content': 'hello'}]
     assert runtime.agent.messages[-1] == {'role': 'user', 'content': 'hello'}
 
 

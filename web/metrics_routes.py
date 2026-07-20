@@ -59,7 +59,7 @@ def _reserve_baseline(runtime_or_agent: Any) -> tuple[Any, bool]:
     agent = _runtime_agent(runtime_or_agent)
     state_lock = getattr(runtime_or_agent, 'state_lock', agent.lock)
     with state_lock:
-        if agent.is_busy():
+        if agent.generation.is_busy():
             return agent, False
         with agent.lock:
             agent.is_generating = True
